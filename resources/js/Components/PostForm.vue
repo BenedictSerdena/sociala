@@ -1,67 +1,73 @@
 <script setup>
 import { ref } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
+import GIcon from '@/Components/GIcon.vue';
 
 const page = usePage();
 const user = page.props.auth.user;
-
 const form = useForm({ content: '', image: null });
 const previewUrl = ref(null);
+const fileInput = ref(null);
+const focused = ref(false);
 
 function onFileChange(e) {
     const file = e.target.files[0];
-    if (file) {
-        form.image = file;
-        previewUrl.value = URL.createObjectURL(file);
-    }
+    if (file) { form.image = file; previewUrl.value = URL.createObjectURL(file); }
 }
 
 function clearImage() {
     form.image = null;
     previewUrl.value = null;
+    if (fileInput.value) fileInput.value.value = '';
 }
 
 function submit() {
     form.post(route('posts.store'), {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => {
-            form.reset();
-            previewUrl.value = null;
-        },
+        onSuccess: () => { form.reset(); previewUrl.value = null; focused.value = false; },
     });
 }
 </script>
 
 <template>
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div class="flex gap-3">
-            <img :src="user.avatar_url || `https://ui-avatars.com/api/?name=${user.name}&background=6366f1&color=fff`"
-                 class="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-            <div class="flex-1">
-                <textarea v-model="form.content" placeholder="What's on your mind?"
-                          class="w-full resize-none border-none outline-none text-gray-800 placeholder-gray-400 text-sm"
-                          rows="3"></textarea>
+    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden transition-shadow duration-200"
+         :class="focused ? 'shadow-md ring-1 ring-indigo-100' : ''">
 
-                <img v-if="previewUrl" :src="previewUrl" class="mt-2 rounded-lg max-h-48 object-cover" />
-
-                <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                    <label class="cursor-pointer flex items-center gap-1.5 text-sm text-gray-500 hover:text-indigo-600">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        Photo
-                        <input type="file" class="hidden" accept="image/*" @change="onFileChange" />
-                    </label>
-                    <button v-if="previewUrl" @click="clearImage" class="text-xs text-red-400 hover:text-red-600">Remove photo</button>
-                    <button @click="submit" :disabled="form.processing || !form.content.trim()"
-                            class="bg-indigo-600 text-white text-sm px-5 py-1.5 rounded-full hover:bg-indigo-700 disabled:opacity-40 transition-colors">
-                        Post
-                    </button>
-                </div>
-                <p v-if="form.errors.content" class="text-red-500 text-xs mt-1">{{ form.errors.content }}</p>
+        <div class="flex gap-3 p-4">
+            <img :src="user.avatar_url" class="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-gray-100" />
+            <div class="flex-1 min-w-0">
+                <textarea v-model="form.content"
+                          @focus="focused = true" @blur="focused = false"
+                          placeholder="What's on your mind?"
+                          class="w-full resize-none outline-none text-gray-800 placeholder-gray-400 text-sm leading-relaxed bg-transparent"
+                          :rows="focused || form.content ? 3 : 1"></textarea>
             </div>
         </div>
+
+        <!-- Image Preview -->
+        <div v-if="previewUrl" class="relative mx-4 mb-3 rounded-xl overflow-hidden">
+            <img :src="previewUrl" class="w-full max-h-64 object-cover" />
+            <button @click="clearImage"
+                    class="absolute top-2 right-2 bg-black bg-opacity-60 text-white w-7 h-7 rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all">
+                <GIcon name="Close" :size="14" />
+            </button>
+        </div>
+
+        <!-- Bottom bar -->
+        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100/80 bg-gray-50/40">
+            <label class="cursor-pointer flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50">
+                <GIcon name="Image" :size="18" />
+                <span class="font-medium text-xs">Photo</span>
+                <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileChange" />
+            </label>
+
+            <button @click="submit" :disabled="form.processing || !form.content.trim()"
+                    class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold px-5 py-2 rounded-full hover:from-indigo-700 hover:to-purple-700 disabled:opacity-40 transition-all shadow-sm flex items-center gap-2">
+                <span>{{ form.processing ? 'Posting…' : 'Post' }}</span>
+            </button>
+        </div>
+
+        <p v-if="form.errors.content" class="px-4 pb-3 text-red-500 text-xs">{{ form.errors.content }}</p>
     </div>
 </template>
