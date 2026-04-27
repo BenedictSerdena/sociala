@@ -31,6 +31,7 @@ const needed = {
     PhotoCamera: { regular: true },
     // follow
     UserPlus: { regular: true },
+    UserCheck: { regular: true },
     UserMinus: { regular: true },
     Users: { regular: true },
     // misc
