@@ -12,6 +12,7 @@ import { useToast } from '@/composables/useToast.js';
 const page = usePage();
 const user = page.props.auth.user;
 const unreadCount = ref(0);
+const unreadMessages = ref(0);
 const { dark, toggle: toggleDark } = useDarkMode();
 const { show: showToast } = useToast();
 const createOpen    = ref(false);
@@ -32,6 +33,13 @@ onMounted(async () => {
         unreadCount.value = res.data.count;
         window.Echo.private(`notifications.${user.id}`)
             .listen('NewNotification', () => { unreadCount.value++; });
+    } catch {}
+
+    try {
+        const msgRes = await axios.get(route('messages.unread'));
+        unreadMessages.value = msgRes.data.count;
+        window.Echo.private(`messages.${user.id}`)
+            .listen('MessageSent', () => { unreadMessages.value++; });
     } catch {}
 
     // Listen for incoming calls from anyone
@@ -135,9 +143,15 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                 </Link>
 
                 <Link :href="route('messages.index')"
-                      class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all font-medium text-sm"
+                      class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all font-medium text-sm relative"
                       :class="isActive('/messages') ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'">
-                    <GIcon name="AnnotationDots" :size="20" :filled="isActive('/messages')" />
+                    <div class="relative">
+                        <GIcon name="AnnotationDots" :size="20" :filled="isActive('/messages')" />
+                        <span v-if="unreadMessages > 0"
+                              class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5">
+                            {{ unreadMessages > 9 ? '9+' : unreadMessages }}
+                        </span>
+                    </div>
                     Messages
                 </Link>
 
@@ -280,9 +294,15 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                     <GIcon name="Plus" :size="24" />
                 </button>
 
-                <Link :href="route('messages.index')" class="flex flex-col items-center p-2 rounded-xl transition-colors"
+                <Link :href="route('messages.index')" class="flex flex-col items-center p-2 rounded-xl transition-colors relative"
                       :class="isActive('/messages') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
-                    <GIcon name="AnnotationDots" :size="24" :filled="isActive('/messages')" />
+                    <div class="relative">
+                        <GIcon name="AnnotationDots" :size="24" :filled="isActive('/messages')" />
+                        <span v-if="unreadMessages > 0"
+                              class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5">
+                            {{ unreadMessages > 9 ? '9+' : unreadMessages }}
+                        </span>
+                    </div>
                 </Link>
 
                 <Link :href="route('profile.show', { user: user.username })" class="flex flex-col items-center p-2"

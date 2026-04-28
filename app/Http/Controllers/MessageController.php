@@ -163,6 +163,16 @@ class MessageController extends Controller
         return response()->json(['pinned' => (bool) $message->pinned_at]);
     }
 
+    public function unreadCount()
+    {
+        $count = Message::where('receiver_id', auth()->id())
+            ->whereNull('read_at')
+            ->whereNull('deleted_for_everyone_at')
+            ->count();
+
+        return response()->json(['count' => $count]);
+    }
+
     private function fmt(Message $message, int $authId): array
     {
         return [

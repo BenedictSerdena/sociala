@@ -34,9 +34,6 @@ class FollowController extends Controller
             broadcast(new NewNotification($notification))->toOthers();
         }
 
-        return response()->json([
-            'following' => $following,
-            'followers_count' => $user->followers()->count(),
-        ]);
+        return back();
     }
 }
