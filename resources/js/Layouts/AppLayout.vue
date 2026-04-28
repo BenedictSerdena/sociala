@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
+import PostForm from '@/Components/PostForm.vue';
 import ToastContainer from '@/Components/ToastContainer.vue';
 import { useDarkMode } from '@/composables/useDarkMode.js';
 import { useToast } from '@/composables/useToast.js';
@@ -11,8 +12,8 @@ const user = page.props.auth.user;
 const unreadCount = ref(0);
 const { dark, toggle: toggleDark } = useDarkMode();
 const { show: showToast } = useToast();
+const createOpen = ref(false);
 
-// Show flash messages as toasts
 watch(() => page.props.flash, (flash) => {
     if (flash?.success) showToast(flash.success, 'success');
     if (flash?.error) showToast(flash.error, 'error');
@@ -105,6 +106,13 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                     Profile
                 </Link>
 
+                <!-- Desktop Create Post button -->
+                <button @click="createOpen = true"
+                        class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all font-medium text-sm mt-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-90 shadow-sm">
+                    <GIcon name="Plus" :size="20" />
+                    New Post
+                </button>
+
                 <Link :href="route('profile.edit')"
                       class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all font-medium text-sm"
                       :class="isActive('/profile/edit') ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'">
@@ -122,7 +130,6 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                         <p class="text-sm font-semibold text-gray-900 dark:text-white truncate">{{ user.name }}</p>
                         <p class="text-xs text-gray-400 truncate">@{{ user.username }}</p>
                     </div>
-                    <!-- Dark mode toggle -->
                     <button @click="toggleDark"
                             class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all flex-shrink-0">
                         <svg v-if="dark" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -189,19 +196,15 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                     <GIcon name="PlusCircle" :size="24" :filled="isActive('/explore')" />
                 </Link>
 
-                <Link :href="route('search')" class="flex flex-col items-center p-2 rounded-xl transition-colors"
-                      :class="isActive('/search') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
-                    <GIcon name="Search" :size="24" :filled="isActive('/search')" />
-                </Link>
+                <!-- Center Create Button -->
+                <button @click="createOpen = true"
+                        class="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 active:scale-95 transition-all -mt-2">
+                    <GIcon name="Plus" :size="24" />
+                </button>
 
                 <Link :href="route('messages.index')" class="flex flex-col items-center p-2 rounded-xl transition-colors"
                       :class="isActive('/messages') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
                     <GIcon name="AnnotationDots" :size="24" :filled="isActive('/messages')" />
-                </Link>
-
-                <Link :href="route('bookmarks.index')" class="flex flex-col items-center p-2 rounded-xl transition-colors"
-                      :class="isActive('/bookmarks') ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
-                    <GIcon name="Bookmark" :size="24" :filled="isActive('/bookmarks')" />
                 </Link>
 
                 <Link :href="route('profile.show', { user: user.username })" class="flex flex-col items-center p-2"
@@ -211,6 +214,27 @@ const isProfile = () => page.url.includes(`/${user.username}`);
 
             </div>
         </nav>
+
+        <!-- ─── Create Post Modal (desktop + mobile) ─── -->
+        <Teleport to="body">
+            <div v-if="createOpen"
+                 class="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+                 @click.self="createOpen = false">
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="createOpen = false"></div>
+                <div class="relative w-full sm:w-[520px] sm:rounded-2xl rounded-t-2xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+                        <h3 class="font-bold text-gray-900 dark:text-white text-base">Create Post</h3>
+                        <button @click="createOpen = false"
+                                class="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                            <GIcon name="Close" :size="18" />
+                        </button>
+                    </div>
+                    <div class="p-4">
+                        <PostForm @posted="createOpen = false" />
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
     </div>
 </template>

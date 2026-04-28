@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Follow;
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,24 @@ class ProfileController extends Controller
             ]),
             'posts' => $posts,
         ]);
+    }
+
+    public function followers(User $user)
+    {
+        $followerIds = Follow::where('following_id', $user->id)->pluck('follower_id');
+        return response()->json(
+            User::whereIn('id', $followerIds)->get()
+                ->map(fn($u) => array_merge($u->toArray(), ['avatar_url' => $u->avatar_url]))
+        );
+    }
+
+    public function following(User $user)
+    {
+        $followingIds = Follow::where('follower_id', $user->id)->pluck('following_id');
+        return response()->json(
+            User::whereIn('id', $followingIds)->get()
+                ->map(fn($u) => array_merge($u->toArray(), ['avatar_url' => $u->avatar_url]))
+        );
     }
 
     public function edit(Request $request): Response

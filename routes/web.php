@@ -34,6 +34,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/posts/{post}', [PostController::class, 'update'])->name('posts.update');
     Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('posts.destroy');
 
+    Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->name('comments.index');
     Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
@@ -56,6 +57,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/users/{user:username}', [ProfileController::class, 'show'])->name('profile.show');
+    Route::get('/users/{user:username}/followers', [ProfileController::class, 'followers'])->name('profile.followers');
+    Route::get('/users/{user:username}/following', [ProfileController::class, 'following'])->name('profile.following');
 
     Route::get('/search', [SearchController::class, 'index'])->name('search');
     Route::get('/explore', [ExploreController::class, 'index'])->name('explore');

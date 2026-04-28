@@ -10,6 +10,14 @@ use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
+    public function index(Post $post)
+    {
+        $comments = $post->comments()->with('user')->latest()->get();
+        return response()->json($comments->map(fn($c) => array_merge($c->toArray(), [
+            'user' => array_merge($c->user->toArray(), ['avatar_url' => $c->user->avatar_url]),
+        ])));
+    }
+
     public function store(Request $request, Post $post)
     {
         $validated = $request->validate([

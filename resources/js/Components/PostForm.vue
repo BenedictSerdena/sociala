@@ -4,6 +4,8 @@ import { useForm, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
 import { useToast } from '@/composables/useToast.js';
 
+const emit = defineEmits(['posted']);
+
 const { show: toast } = useToast();
 
 const page = usePage();
@@ -28,14 +30,14 @@ function submit() {
     form.post(route('posts.store'), {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => { form.reset(); previewUrl.value = null; focused.value = false; toast('Post shared!', 'success'); },
+        onSuccess: () => { form.reset(); previewUrl.value = null; focused.value = false; toast('Post shared!', 'success'); emit('posted'); },
     });
 }
 </script>
 
 <template>
-    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden transition-shadow duration-200"
-         :class="focused ? 'shadow-md ring-1 ring-indigo-100' : ''">
+    <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden transition-shadow duration-200"
+         :class="focused ? 'shadow-md ring-1 ring-indigo-100 dark:ring-indigo-900' : ''">
 
         <div class="flex gap-3 p-4">
             <img :src="user.avatar_url" class="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-gray-100" />
@@ -43,7 +45,7 @@ function submit() {
                 <textarea v-model="form.content"
                           @focus="focused = true" @blur="focused = false"
                           placeholder="What's on your mind?"
-                          class="w-full resize-none outline-none text-gray-800 placeholder-gray-400 text-sm leading-relaxed bg-transparent"
+                          class="w-full resize-none outline-none text-gray-800 dark:text-gray-100 placeholder-gray-400 text-sm leading-relaxed bg-transparent"
                           :rows="focused || form.content ? 3 : 1"
                           maxlength="1000"></textarea>
                 <p v-if="focused || form.content"
@@ -64,8 +66,8 @@ function submit() {
         </div>
 
         <!-- Bottom bar -->
-        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100/80 bg-gray-50/40">
-            <label class="cursor-pointer flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50">
+        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100/80 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/30">
+            <label class="cursor-pointer flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40">
                 <GIcon name="Image" :size="18" />
                 <span class="font-medium text-xs">Photo</span>
                 <input ref="fileInput" type="file" class="hidden" accept="image/*" @change="onFileChange" />

@@ -12,9 +12,9 @@ function notificationLink(n) {
 }
 
 const typeConfig = {
-    like: { icon: 'Heart', color: 'text-red-500 bg-red-50' },
-    comment: { icon: 'Annotation', color: 'text-indigo-500 bg-indigo-50' },
-    follow: { icon: 'UserPlus', color: 'text-green-500 bg-green-50' },
+    like: { icon: 'Heart', color: 'text-red-500 bg-red-50 dark:bg-red-950/50' },
+    comment: { icon: 'Annotation', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50' },
+    follow: { icon: 'UserPlus', color: 'text-green-500 bg-green-50 dark:bg-green-950/50' },
 };
 
 function formatDate(date) {
@@ -29,35 +29,35 @@ function formatDate(date) {
 <template>
     <AppLayout>
         <div class="max-w-xl mx-auto">
-            <div class="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100">
-                    <h2 class="font-bold text-gray-900 text-lg">Notifications</h2>
+            <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
+                    <h2 class="font-bold text-gray-900 dark:text-white text-lg">Notifications</h2>
                     <p class="text-gray-400 text-xs mt-0.5">Activity on your posts</p>
                 </div>
 
                 <div v-if="notifications.data.length === 0" class="p-14 text-center">
                     <div class="text-5xl mb-4">🔔</div>
-                    <p class="text-gray-800 font-bold">All caught up!</p>
+                    <p class="text-gray-800 dark:text-gray-200 font-bold">All caught up!</p>
                     <p class="text-gray-400 text-sm mt-2">No notifications yet.</p>
                 </div>
 
                 <a v-for="n in notifications.data" :key="n.id"
                    :href="notificationLink(n)"
-                   class="flex items-center gap-4 px-5 py-4 border-b border-gray-50/80 hover:bg-gray-50 transition-colors group"
-                   :class="!n.read_at ? 'bg-indigo-50/40' : ''">
+                   class="flex items-center gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                   :class="!n.read_at ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''">
 
                     <div class="relative flex-shrink-0">
                         <img :src="n.data.user_avatar"
-                             class="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100 group-hover:ring-indigo-200 transition-all"
+                             class="w-12 h-12 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-700 group-hover:ring-indigo-200 transition-all"
                              @error="$event.target.src = `https://ui-avatars.com/api/?name=${n.data.user_name}&background=6366f1&color=fff`" />
-                        <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-sm border-2 border-white"
+                        <div class="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-sm border-2 border-white dark:border-gray-900"
                              :class="(typeConfig[n.type] || typeConfig.like).color">
                             <GIcon :name="(typeConfig[n.type] || typeConfig.like).icon" :size="12" />
                         </div>
                     </div>
 
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-800 leading-snug">
+                        <p class="text-sm text-gray-800 dark:text-gray-200 leading-snug">
                             <span class="font-bold">{{ n.data.user_name }}</span>
                             {{ ' ' + n.data.message.replace(n.data.user_name, '').trim() }}
                         </p>
@@ -69,9 +69,9 @@ function formatDate(date) {
 
                 <div v-if="notifications.prev_page_url || notifications.next_page_url" class="flex gap-2 justify-center p-4">
                     <a v-if="notifications.prev_page_url" :href="notifications.prev_page_url"
-                       class="px-5 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">← Prev</a>
+                       class="px-5 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">← Prev</a>
                     <a v-if="notifications.next_page_url" :href="notifications.next_page_url"
-                       class="px-5 py-2 bg-gray-100 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors">Next →</a>
+                       class="px-5 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Next →</a>
                 </div>
             </div>
         </div>
