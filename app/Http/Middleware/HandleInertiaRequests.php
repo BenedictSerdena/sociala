@@ -41,6 +41,9 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success'),
                 'error'   => $request->session()->get('error'),
             ],
+            'pendingReports' => $request->user()?->is_admin
+                ? \App\Models\CommentReport::whereNull('resolved_at')->count()
+                : 0,
         ];
     }
 }

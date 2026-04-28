@@ -1,13 +1,14 @@
 <script setup>
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, onMounted } from 'vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
 import ImageLightbox from '@/Components/ImageLightbox.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { useToast } from '@/composables/useToast.js';
 import PostContent from '@/Components/PostContent.vue';
 
 const { show: toast } = useToast();
-const props = defineProps({ post: Object });
+const props = defineProps({ post: Object, autoOpenComments: { type: Boolean, default: false } });
 const page = usePage();
 const authUser = page.props.auth.user;
 
@@ -29,6 +30,7 @@ const replyContent    = ref('');
 const replyInputRef   = ref(null);
 const replySubmitting = ref(false);
 
+const commentMenu   = ref(null); // { comment, parentComment|null }
 const reportModal   = ref(null);
 const reportReason  = ref('inappropriate');
 const reportSending = ref(false);
@@ -67,6 +69,13 @@ function toggleComments() {
     if (showComments.value) loadComments();
 }
 
+onMounted(() => {
+    if (props.autoOpenComments) {
+        showComments.value = true;
+        loadComments();
+    }
+});
+
 async function submitComment() {
     if (!newComment.value.trim() || submitting.value) return;
     submitting.value = true;
@@ -102,8 +111,24 @@ async function deleteComment(commentId, parentComment = null) {
         if (parentComment) parentComment.replies = parentComment.replies.filter(r => r.id !== commentId);
         else comments.value = comments.value.filter(c => c.id !== commentId);
         props.post.comments_count--;
+        commentMenu.value = null;
         toast('Comment deleted', 'success');
     } catch { toast('Could not delete', 'error'); }
+}
+async function pinComment(comment) {
+    const res = await axios.post(route('comments.pin', comment.id));
+    comment.pinned_at = res.data.pinned ? new Date().toISOString() : null;
+    commentMenu.value = null;
+    toast(res.data.pinned ? 'Comment pinned' : 'Comment unpinned', 'success');
+}
+async function hideComment(comment) {
+    const res = await axios.post(route('comments.hide', comment.id));
+    comment.hidden_at = res.data.hidden ? new Date().toISOString() : null;
+    commentMenu.value = null;
+    toast(res.data.hidden ? 'Comment hidden' : 'Comment visible again', 'success');
+}
+function openCommentMenu(comment, parentComment = null) {
+    commentMenu.value = commentMenu.value?.comment?.id === comment.id ? null : { comment, parentComment };
 }
 async function sendReport() {
     if (!reportModal.value || reportSending.value) return;
@@ -135,8 +160,10 @@ async function toggleLike() {
     const res = await axios.post(route('likes.toggle', props.post.id));
     liked.value = res.data.liked; likesCount.value = res.data.count;
 }
-function deletePost() {
-    if (!confirm('Delete this post?')) return;
+const deleteConfirm = ref(false);
+function deletePost() { deleteConfirm.value = true; }
+function confirmDelete() {
+    deleteConfirm.value = false;
     useForm({}).delete(route('posts.destroy', props.post.id), { preserveScroll: true, onSuccess: () => toast('Post deleted', 'success') });
 }
 async function sharePost() {
@@ -163,6 +190,7 @@ async function sharePost() {
             <div v-if="post.user.id === authUser.id" class="flex items-center gap-1">
                 <button @click="editing = !editing" class="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950 transition-all"><GIcon name="Edit" :size="16" /></button>
                 <button @click="deletePost" class="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all"><GIcon name="Trash" :size="16" /></button>
+                <ConfirmModal :open="deleteConfirm" title="Delete Post" message="This post will be permanently removed." confirm-text="Delete" :danger="true" @confirm="confirmDelete" @cancel="deleteConfirm = false" />
             </div>
         </div>
 
@@ -212,26 +240,86 @@ async function sharePost() {
 
             <div v-else class="px-4 pt-3 pb-3 space-y-4">
 
+                <!-- click-outside to close comment menu -->
+                <div v-if="commentMenu" class="fixed inset-0 z-10" @click="commentMenu = null"></div>
+
                 <p v-if="comments.length === 0" class="text-center text-gray-400 dark:text-gray-500 text-xs py-2">No comments yet — be the first!</p>
 
                 <!-- Top-level comments -->
                 <div v-for="comment in comments" :key="comment.id" class="space-y-2">
-                    <div class="flex gap-2.5 group/c">
+
+                    <!-- Hidden comment (post owner sees collapsed bar) -->
+                    <div v-if="comment.hidden_at && post.user.id !== authUser.id"></div>
+                    <div v-else-if="comment.hidden_at"
+                         class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-600">
+                        <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                        <span class="text-[11px] text-gray-400 flex-1">Comment hidden from others</span>
+                        <button @click="hideComment(comment)" class="text-[10px] font-semibold text-indigo-500 hover:underline">Unhide</button>
+                    </div>
+
+                    <div v-else class="flex gap-2.5 group/c">
                         <Link :href="route('profile.show', { user: comment.user?.username })">
                             <img :src="comment.user?.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5 hover:opacity-80 transition-opacity" />
                         </Link>
                         <div class="flex-1 min-w-0">
-                            <!-- Bubble -->
-                            <div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm px-3.5 py-2.5 border border-gray-100 dark:border-gray-700 shadow-sm inline-block max-w-full">
-                                <Link :href="route('profile.show', { user: comment.user?.username })" class="font-bold text-xs text-gray-800 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{{ comment.user?.name }}</Link>
-                                <span class="text-sm text-gray-700 dark:text-gray-300"> {{ comment.content }}</span>
+                            <!-- Pinned badge -->
+                            <div v-if="comment.pinned_at" class="flex items-center gap-1 mb-1">
+                                <svg class="w-3 h-3 text-indigo-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+                                <span class="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">Pinned</span>
                             </div>
+
+                            <!-- Bubble -->
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm px-3.5 py-2.5 border border-gray-100 dark:border-gray-700 shadow-sm inline-block max-w-full"
+                                 :class="comment.pinned_at ? 'border-indigo-200 dark:border-indigo-800' : ''">
+                                <div class="flex flex-wrap items-baseline gap-1">
+                                    <Link :href="route('profile.show', { user: comment.user?.username })" class="font-bold text-xs text-gray-800 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors leading-snug">{{ comment.user?.name }}</Link>
+                                    <span class="text-sm text-gray-700 dark:text-gray-300 leading-snug">{{ comment.content }}</span>
+                                </div>
+                            </div>
+
                             <!-- Meta row -->
                             <div class="flex items-center gap-3 mt-1 ml-1">
                                 <time class="text-[10px] text-gray-400 dark:text-gray-500" :title="fullDate(comment.created_at)">{{ formatDate(comment.created_at) }}</time>
                                 <button @click="startReply(comment)" class="text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Reply</button>
-                                <button v-if="canDelete(comment)" @click="deleteComment(comment.id)" class="text-[11px] font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover/c:opacity-100">Delete</button>
-                                <button v-else-if="comment.user?.id !== authUser.id" @click="reportModal = comment; reportReason = 'inappropriate'" class="text-[11px] text-gray-400 hover:text-orange-400 transition-colors opacity-0 group-hover/c:opacity-100">Report</button>
+                                <!-- 3-dots menu trigger -->
+                                <div class="relative ml-auto">
+                                    <button @click.stop="openCommentMenu(comment)"
+                                            class="p-1 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                                        <GIcon name="MoreHorizontal" :size="15" />
+                                    </button>
+                                    <!-- Dropdown -->
+                                    <div v-if="commentMenu?.comment?.id === comment.id"
+                                         class="absolute right-0 bottom-full mb-1 w-44 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-20 py-1">
+                                        <!-- Post owner actions -->
+                                        <template v-if="post.user.id === authUser.id">
+                                            <button @click="pinComment(comment)"
+                                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                <svg class="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+                                                {{ comment.pinned_at ? 'Unpin comment' : 'Pin comment' }}
+                                            </button>
+                                            <button @click="hideComment(comment)"
+                                                    class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                                <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                                                Hide comment
+                                            </button>
+                                            <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2"></div>
+                                        </template>
+                                        <!-- Delete (own comment OR post owner) -->
+                                        <button v-if="canDelete(comment)"
+                                                @click="deleteComment(comment.id)"
+                                                class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
+                                            <GIcon name="Trash" :size="14" class="flex-shrink-0" />
+                                            Delete comment
+                                        </button>
+                                        <!-- Report (other users' comments) -->
+                                        <button v-if="comment.user?.id !== authUser.id"
+                                                @click="reportModal = comment; reportReason = 'inappropriate'; commentMenu = null"
+                                                class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
+                                            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+                                            Report comment
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Reply input -->
@@ -252,13 +340,35 @@ async function sharePost() {
                                     </Link>
                                     <div class="flex-1 min-w-0">
                                         <div class="bg-white dark:bg-gray-800 rounded-2xl rounded-tl-sm px-3 py-2 border border-gray-100 dark:border-gray-700 shadow-sm inline-block max-w-full">
-                                            <Link :href="route('profile.show', { user: reply.user?.username })" class="font-bold text-xs text-gray-800 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">{{ reply.user?.name }}</Link>
-                                            <span class="text-xs text-gray-700 dark:text-gray-300"> {{ reply.content }}</span>
+                                            <div class="flex flex-wrap items-baseline gap-1">
+                                                <Link :href="route('profile.show', { user: reply.user?.username })" class="font-bold text-xs text-gray-800 dark:text-gray-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors leading-snug">{{ reply.user?.name }}</Link>
+                                                <span class="text-xs text-gray-700 dark:text-gray-300 leading-snug">{{ reply.content }}</span>
+                                            </div>
                                         </div>
                                         <div class="flex items-center gap-3 mt-1 ml-0.5">
                                             <time class="text-[10px] text-gray-400 dark:text-gray-500" :title="fullDate(reply.created_at)">{{ formatDate(reply.created_at) }}</time>
-                                            <button v-if="canDelete(reply)" @click="deleteComment(reply.id, comment)" class="text-[11px] font-semibold text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors opacity-0 group-hover/r:opacity-100">Delete</button>
-                                            <button v-else-if="reply.user?.id !== authUser.id" @click="reportModal = reply; reportReason = 'inappropriate'" class="text-[11px] text-gray-400 hover:text-orange-400 transition-colors opacity-0 group-hover/r:opacity-100">Report</button>
+                                            <!-- Reply 3-dots -->
+                                            <div class="relative ml-auto">
+                                                <button @click.stop="openCommentMenu(reply, comment)"
+                                                        class="p-1 rounded-lg text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                                                    <GIcon name="MoreHorizontal" :size="13" />
+                                                </button>
+                                                <div v-if="commentMenu?.comment?.id === reply.id"
+                                                     class="absolute right-0 bottom-full mb-1 w-44 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-20 py-1">
+                                                    <button v-if="canDelete(reply)"
+                                                            @click="deleteComment(reply.id, comment)"
+                                                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
+                                                        <GIcon name="Trash" :size="14" class="flex-shrink-0" />
+                                                        Delete reply
+                                                    </button>
+                                                    <button v-if="reply.user?.id !== authUser.id"
+                                                            @click="reportModal = reply; reportReason = 'inappropriate'; commentMenu = null"
+                                                            class="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors">
+                                                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>
+                                                        Report reply
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
