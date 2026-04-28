@@ -12,14 +12,16 @@ const allRead = ref(items.value.every(n => n.read_at));
 
 function notificationLink(n) {
     if (n.type === 'follow') return route('profile.show', { user: n.data.user_username });
+    if (n.type === 'story_like') return '#';
     if (n.data.post_id) return route('posts.show', n.data.post_id);
     return '#';
 }
 
 const typeConfig = {
-    like:    { icon: 'Heart',      color: 'text-red-500 bg-red-50 dark:bg-red-950/50' },
-    comment: { icon: 'Annotation', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50' },
-    follow:  { icon: 'UserPlus',   color: 'text-green-500 bg-green-50 dark:bg-green-950/50' },
+    like:       { icon: 'Heart',      color: 'text-red-500 bg-red-50 dark:bg-red-950/50' },
+    story_like: { icon: 'Heart',      color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/50' },
+    comment:    { icon: 'Annotation', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50' },
+    follow:     { icon: 'UserPlus',   color: 'text-green-500 bg-green-50 dark:bg-green-950/50' },
 };
 
 function formatDate(date) {

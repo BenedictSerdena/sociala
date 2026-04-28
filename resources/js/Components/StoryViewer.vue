@@ -27,6 +27,24 @@ let clockTimer = null;
 const story = computed(() => props.stories[current.value]);
 const isOwn = computed(() => story.value?.user?.id === authUser.id);
 
+const liked = ref(false);
+const likesCount = ref(0);
+const likeAnimating = ref(false);
+
+watch(story, (s) => {
+    liked.value = s?.is_liked ?? false;
+    likesCount.value = s?.likes_count ?? 0;
+}, { immediate: true });
+
+async function toggleLike() {
+    if (likeAnimating.value) return;
+    likeAnimating.value = true;
+    const res = await axios.post(route('story-likes.toggle', story.value.id));
+    liked.value = res.data.liked;
+    likesCount.value = res.data.count;
+    setTimeout(() => { likeAnimating.value = false; }, 300);
+}
+
 function timeSince(date) {
     const diff = Math.floor((timeNow.value - new Date(date)) / 1000);
     const h = Math.floor(diff / 3600);
@@ -188,6 +206,23 @@ onUnmounted(() => {
                 </div>
             </div>
 
+
+            <!-- Like button (bottom right) -->
+            <div class="absolute bottom-5 right-4 flex flex-col items-center gap-1 z-30"
+                 @mousedown.stop @touchstart.stop>
+                <button @click.stop="toggleLike"
+                        class="flex flex-col items-center gap-0.5 group">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         :class="['w-7 h-7 transition-all duration-300', liked ? 'text-red-500 scale-110' : 'text-white', likeAnimating ? 'scale-125' : '']"
+                         viewBox="0 0 24 24"
+                         :fill="liked ? 'currentColor' : 'none'"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    <span class="text-white text-xs font-semibold drop-shadow">{{ likesCount }}</span>
+                </button>
+            </div>
 
             <!-- Tap zones (invisible) -->
             <button @click.stop="prev"

@@ -23,8 +23,24 @@ class Story extends Model
         return $query->where('expires_at', '>', now())->whereNull('archived_at');
     }
 
+    public function likes()
+    {
+        return $this->hasMany(StoryLike::class);
+    }
+
     public function getImageUrlAttribute(): string
     {
         return asset('storage/' . $this->image);
+    }
+
+    public function getLikesCountAttribute(): int
+    {
+        return $this->likes()->count();
+    }
+
+    public function getIsLikedAttribute(): bool
+    {
+        if (!auth()->check()) return false;
+        return $this->likes()->where('user_id', auth()->id())->exists();
     }
 }
