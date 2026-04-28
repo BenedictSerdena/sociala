@@ -9,9 +9,24 @@ class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['sender_id', 'receiver_id', 'content', 'read_at'];
+    protected $fillable = [
+        'sender_id', 'receiver_id', 'content', 'image',
+        'read_at', 'pinned_at',
+        'deleted_for_sender_at', 'deleted_for_receiver_at', 'deleted_for_everyone_at',
+    ];
 
-    protected $casts = ['read_at' => 'datetime'];
+    protected $casts = [
+        'read_at'                 => 'datetime',
+        'pinned_at'               => 'datetime:Y-m-d H:i:s',
+        'deleted_for_sender_at'   => 'datetime:Y-m-d H:i:s',
+        'deleted_for_receiver_at' => 'datetime:Y-m-d H:i:s',
+        'deleted_for_everyone_at' => 'datetime:Y-m-d H:i:s',
+    ];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image ? asset('storage/' . $this->image) : null;
+    }
 
     public function sender()
     {

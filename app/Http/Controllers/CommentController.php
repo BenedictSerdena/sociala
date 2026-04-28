@@ -16,7 +16,7 @@ class CommentController extends Controller
         $comments = $post->comments()
             ->with(['user', 'replies.user'])
             ->whereNull('parent_id')
-            ->latest()
+            ->orderByRaw('pinned_at IS NULL ASC, pinned_at DESC, created_at DESC')
             ->get();
 
         return response()->json($comments->map(fn($c) => $this->fmt($c)));
@@ -69,6 +69,20 @@ class CommentController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function pin(Comment $comment)
+    {
+        abort_if($comment->post->user_id !== auth()->id(), 403);
+        $comment->update(['pinned_at' => $comment->pinned_at ? null : now()]);
+        return response()->json(['pinned' => (bool) $comment->pinned_at]);
+    }
+
+    public function hide(Comment $comment)
+    {
+        abort_if($comment->post->user_id !== auth()->id(), 403);
+        $comment->update(['hidden_at' => $comment->hidden_at ? null : now()]);
+        return response()->json(['hidden' => (bool) $comment->hidden_at]);
+    }
+
     public function report(Request $request, Comment $comment)
     {
         abort_if($comment->user_id === auth()->id(), 403);
@@ -87,14 +101,26 @@ class CommentController extends Controller
 
     private function fmt(Comment $comment): array
     {
-        $data = $comment->toArray();
-        $data['user'] = array_merge($comment->user->toArray(), ['avatar_url' => $comment->user->avatar_url]);
-        $data['replies'] = ($comment->relationLoaded('replies'))
-            ? $comment->replies->map(fn($r) => array_merge($r->toArray(), [
-                'user'    => array_merge($r->user->toArray(), ['avatar_url' => $r->user->avatar_url]),
-                'replies' => [],
-              ]))->toArray()
-            : [];
-        return $data;
+        return [
+            'id'        => $comment->id,
+            'content'   => $comment->content,
+            'parent_id' => $comment->parent_id,
+            'pinned_at' => $comment->pinned_at,
+            'hidden_at' => $comment->hidden_at,
+            'created_at'=> $comment->created_at,
+            'user'      => array_merge($comment->user->toArray(), ['avatar_url' => $comment->user->avatar_url]),
+            'replies'   => ($comment->relationLoaded('replies'))
+                ? $comment->replies->map(fn($r) => [
+                    'id'         => $r->id,
+                    'content'    => $r->content,
+                    'parent_id'  => $r->parent_id,
+                    'pinned_at'  => $r->pinned_at,
+                    'hidden_at'  => $r->hidden_at,
+                    'created_at' => $r->created_at,
+                    'user'       => array_merge($r->user->toArray(), ['avatar_url' => $r->user->avatar_url]),
+                    'replies'    => [],
+                  ])->toArray()
+                : [],
+        ];
     }
 }

@@ -20,6 +20,8 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "agora-rtc-sdk-ng": "^4.24.3",
+        "chart.js": "^4.5.1",
         "griddy-icons": "^0.2.0",
         "laravel-echo": "^2.3.4",
         "pusher-js": "^8.5.0",

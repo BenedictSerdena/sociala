@@ -17,6 +17,12 @@ class NotificationController extends Controller
         ]);
     }
 
+    public function markAllRead()
+    {
+        auth()->user()->userNotifications()->whereNull('read_at')->update(['read_at' => now()]);
+        return response()->json(['success' => true]);
+    }
+
     public function unreadCount()
     {
         return response()->json([

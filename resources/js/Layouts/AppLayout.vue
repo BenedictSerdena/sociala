@@ -4,6 +4,8 @@ import { Link, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
 import PostForm from '@/Components/PostForm.vue';
 import ToastContainer from '@/Components/ToastContainer.vue';
+import IncomingCallModal from '@/Components/IncomingCallModal.vue';
+import CallModal from '@/Components/CallModal.vue';
 import { useDarkMode } from '@/composables/useDarkMode.js';
 import { useToast } from '@/composables/useToast.js';
 
@@ -12,7 +14,12 @@ const user = page.props.auth.user;
 const unreadCount = ref(0);
 const { dark, toggle: toggleDark } = useDarkMode();
 const { show: showToast } = useToast();
-const createOpen = ref(false);
+const createOpen    = ref(false);
+const incomingCall  = ref(null);  // { callType, channelName, caller }
+const activeCall    = ref(false);
+const activeCallType = ref('voice');
+const activeChannel  = ref(null);
+const activeCallee   = ref(null);
 
 watch(() => page.props.flash, (flash) => {
     if (flash?.success) showToast(flash.success, 'success');
@@ -26,7 +33,51 @@ onMounted(async () => {
         window.Echo.private(`notifications.${user.id}`)
             .listen('NewNotification', () => { unreadCount.value++; });
     } catch {}
+
+    // Listen for incoming calls from anyone
+    try {
+        window.Echo.private(`call.${user.id}`)
+            .listen('.CallSignal', (e) => {
+                if (e.type === 'incoming') {
+                    incomingCall.value = {
+                        callType:    e.callType,
+                        channelName: e.channelName,
+                        caller:      e.caller,
+                    };
+                } else if (e.type === 'ended' || e.type === 'declined') {
+                    incomingCall.value = null;
+                    activeCall.value   = false;
+                }
+            });
+    } catch {}
 });
+
+async function acceptCall() {
+    const call = incomingCall.value;
+    incomingCall.value   = null;
+    activeCallee.value   = call.caller;
+    activeCallType.value = call.callType;
+    activeChannel.value  = call.channelName;
+    activeCall.value     = true;
+    // Notify caller we accepted
+    await axios.post(route('call.signal'), {
+        to:        call.caller.id,
+        type:      'accepted',
+        call_type: call.callType,
+        channel:   call.channelName,
+    }).catch(() => {});
+}
+
+async function declineCall() {
+    const call = incomingCall.value;
+    incomingCall.value = null;
+    await axios.post(route('call.signal'), {
+        to:        call.caller.id,
+        type:      'declined',
+        call_type: call.callType,
+        channel:   call.channelName,
+    }).catch(() => {});
+}
 
 const isActive = (prefix) => page.url.startsWith(prefix);
 const isProfile = () => page.url.includes(`/${user.username}`);
@@ -37,15 +88,26 @@ const isProfile = () => page.url.includes(`/${user.username}`);
 
         <ToastContainer />
 
+        <IncomingCallModal :call="incomingCall" @accept="acceptCall" @decline="declineCall" />
+
+        <CallModal :open="activeCall" :type="activeCallType" :channel-name="activeChannel"
+                   :chat-user="activeCallee" :current-user="user"
+                   @close="activeCall = false" />
+
         <!-- ─── Desktop Sidebar ─── -->
         <aside class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200/80 dark:border-gray-800 z-40 px-4 py-6">
 
             <!-- Logo -->
-            <Link :href="route('feed')" class="flex items-center gap-3 px-2 mb-8">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-                    <GIcon name="Users" :size="20" class="text-white" />
+            <Link :href="route('feed')" class="flex items-center gap-3 px-2 mb-8 group">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-200 dark:shadow-purple-900/40 group-hover:shadow-purple-300 dark:group-hover:shadow-purple-800/60 transition-shadow">
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/>
+                        <circle cx="12" cy="10" r="1" fill="currentColor" stroke="none"/>
+                        <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>
+                    </svg>
                 </div>
-                <span class="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">SocialApp</span>
+                <span class="text-xl font-black tracking-tight bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-transparent">Sociala</span>
             </Link>
 
             <!-- Nav -->
@@ -120,6 +182,14 @@ const isProfile = () => page.url.includes(`/${user.username}`);
                     Settings
                 </Link>
 
+                <Link v-if="user.is_admin" :href="route('admin.dashboard')"
+                      class="flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all font-medium text-sm bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 dark:hover:bg-slate-600">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Admin Panel
+                </Link>
+
             </nav>
 
             <!-- User Footer -->
@@ -151,8 +221,16 @@ const isProfile = () => page.url.includes(`/${user.username}`);
         <!-- ─── Mobile Top Bar ─── -->
         <header class="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 sticky top-0 z-40 shadow-sm">
             <div class="flex items-center justify-between px-4 h-14">
-                <Link :href="route('feed')" class="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                    SocialApp
+                <Link :href="route('feed')" class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md">
+                        <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/>
+                            <circle cx="12" cy="10" r="1" fill="currentColor" stroke="none"/>
+                            <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>
+                        </svg>
+                    </div>
+                    <span class="text-xl font-black tracking-tight bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-transparent">Sociala</span>
                 </Link>
                 <div class="flex items-center gap-1">
                     <button @click="toggleDark"

@@ -20,16 +20,27 @@ class User extends Authenticatable
         'bio',
         'avatar',
         'cover_photo',
+        'is_admin',
+        'banned_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
+
+    protected $appends = ['avatar_url'];
 
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'banned_at'         => 'datetime',
+            'is_admin'          => 'boolean',
+            'password'          => 'hashed',
         ];
+    }
+
+    public function isBanned(): bool
+    {
+        return !is_null($this->banned_at);
     }
 
     public function posts()

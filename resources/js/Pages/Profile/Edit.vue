@@ -293,7 +293,7 @@ function deleteAccount() {
                             </div>
                             <div>
                                 <h3 class="font-bold text-gray-900 dark:text-white text-sm">Appearance</h3>
-                                <p class="text-gray-400 dark:text-gray-500 text-xs">Customize how SocialApp looks</p>
+                                <p class="text-gray-400 dark:text-gray-500 text-xs">Customize how Sociala looks</p>
                             </div>
                         </div>
 

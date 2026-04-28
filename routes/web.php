@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Admin\UserController as AdminUser;
+use App\Http\Controllers\Admin\ReportController as AdminReport;
+use App\Http\Controllers\Admin\PostController as AdminPost;
 use App\Http\Controllers\BookmarkController;
 use App\Http\Controllers\ExploreController;
 use App\Http\Controllers\HashtagController;
@@ -38,6 +42,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::post('/comments/{comment}/report', [CommentController::class, 'report'])->name('comments.report');
+    Route::post('/comments/{comment}/pin', [CommentController::class, 'pin'])->name('comments.pin');
+    Route::post('/comments/{comment}/hide', [CommentController::class, 'hide'])->name('comments.hide');
 
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle'])->name('likes.toggle');
     Route::post('/posts/{post}/bookmark', [BookmarkController::class, 'toggle'])->name('bookmarks.toggle');
@@ -49,6 +55,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/messages/{user}', [MessageController::class, 'show'])->name('messages.show');
     Route::post('/messages/{user}', [MessageController::class, 'store'])->name('messages.store');
     Route::post('/messages/{user}/read', [MessageController::class, 'markRead'])->name('messages.read');
+    Route::delete('/message/{message}/me', [MessageController::class, 'deleteForMe'])->name('messages.deleteForMe');
+    Route::delete('/message/{message}/everyone', [MessageController::class, 'deleteForEveryone'])->name('messages.deleteForEveryone');
+    Route::post('/message/{message}/pin', [MessageController::class, 'pin'])->name('messages.pin');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread');
@@ -65,6 +74,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/explore', [ExploreController::class, 'index'])->name('explore');
     Route::get('/hashtags/{tag}', [HashtagController::class, 'show'])->name('hashtags.show');
 
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.markAllRead');
+    Route::post('/call/token', [\App\Http\Controllers\CallController::class, 'token'])->name('call.token');
+    Route::post('/call/signal', [\App\Http\Controllers\CallController::class, 'signal'])->name('call.signal');
+
     Route::post('/stories', [StoryController::class, 'store'])->name('stories.store');
     Route::post('/stories/{story}/archive', [StoryController::class, 'archive'])->name('stories.archive');
     Route::delete('/stories/{story}', [StoryController::class, 'destroy'])->name('stories.destroy');
@@ -73,6 +86,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/users/{user:username}/archived-stories', [ProfileController::class, 'archivedStories'])->name('profile.archived-stories');
     Route::get('/users/{user:username}/archived-posts', [ProfileController::class, 'archived'])->name('profile.archived');
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [AdminDashboard::class, 'index'])->name('dashboard');
+    Route::get('/users', [AdminUser::class, 'index'])->name('users.index');
+    Route::post('/users/bulk-action', [AdminUser::class, 'bulkAction'])->name('users.bulk');
+    Route::get('/users/{user}', [AdminUser::class, 'show'])->name('users.show');
+    Route::post('/users/{user}/ban', [AdminUser::class, 'ban'])->name('users.ban');
+    Route::post('/users/{user}/promote', [AdminUser::class, 'promote'])->name('users.promote');
+    Route::delete('/users/{user}', [AdminUser::class, 'destroy'])->name('users.destroy');
+    Route::get('/reports', [AdminReport::class, 'index'])->name('reports.index');
+    Route::post('/reports/{report}/dismiss', [AdminReport::class, 'dismiss'])->name('reports.dismiss');
+    Route::delete('/reports/{report}/comment', [AdminReport::class, 'deleteComment'])->name('reports.deleteComment');
+    Route::get('/posts', [AdminPost::class, 'index'])->name('posts.index');
+    Route::delete('/posts/{post}', [AdminPost::class, 'destroy'])->name('posts.destroy');
 });
 
 require __DIR__ . '/auth.php';

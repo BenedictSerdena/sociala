@@ -31,21 +31,9 @@ function timeSince(date) {
     const diff = Math.floor((timeNow.value - new Date(date)) / 1000);
     const h = Math.floor(diff / 3600);
     const m = Math.floor((diff % 3600) / 60);
-    const s = diff % 60;
-    if (h > 0) return `${h}h ${m}m ago`;
-    if (m > 0) return `${m}m ${s}s ago`;
-    return `${s}s ago`;
-}
-
-function timeLeft(expiresAt) {
-    const diff = Math.floor((new Date(expiresAt) - timeNow.value) / 1000);
-    if (diff <= 0) return 'Expired';
-    const h = Math.floor(diff / 3600);
-    const m = Math.floor((diff % 3600) / 60);
-    const s = diff % 60;
-    if (h > 0) return `${h}h ${m}m left`;
-    if (m > 0) return `${m}m ${s}s left`;
-    return `${s}s left`;
+    if (h > 0) return `${h}h ago`;
+    if (m > 0) return `${m}m ago`;
+    return 'Just now';
 }
 
 function startProgress() {
@@ -114,7 +102,7 @@ function onKeyDown(e) {
 onMounted(() => {
     startProgress();
     window.addEventListener('keydown', onKeyDown);
-    clockTimer = setInterval(() => { timeNow.value = Date.now(); }, 1000);
+    clockTimer = setInterval(() => { timeNow.value = Date.now(); }, 60000);
 });
 
 onUnmounted(() => {
@@ -149,7 +137,7 @@ onUnmounted(() => {
                  style="background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 100%)"></div>
 
             <!-- Progress bars -->
-            <div class="absolute top-3 left-3 right-3 flex gap-1 z-10">
+            <div class="absolute top-3 left-3 right-3 flex gap-1 z-30">
                 <div v-for="(s, i) in stories" :key="s.id"
                      class="h-[3px] flex-1 bg-white/30 rounded-full overflow-hidden">
                     <div class="h-full bg-white rounded-full transition-none"
@@ -158,7 +146,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Header: avatar + name + time -->
-            <div class="absolute top-8 left-3 right-3 flex items-center justify-between z-10">
+            <div class="absolute top-8 left-3 right-3 flex items-center justify-between z-30">
                 <div class="flex items-center gap-2.5">
                     <img :src="story.user.avatar_url"
                          class="w-10 h-10 rounded-full border-2 border-white/80 object-cover shadow-lg" />
@@ -172,8 +160,9 @@ onUnmounted(() => {
                     <!-- 3-dots menu (own story) -->
                     <div v-if="isOwn" class="relative">
                         <button @click.stop="menuOpen = !menuOpen; paused = menuOpen"
+                                @mousedown.stop @touchstart.stop
                                 class="text-white p-2 hover:bg-white/10 rounded-full transition-colors">
-                            <GIcon name="DotsHorizontal" :size="20" class="text-white" />
+                            <GIcon name="MoreHorizontal" :size="20" class="text-white" />
                         </button>
                         <div v-if="menuOpen"
                              class="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden z-20 border border-gray-100 dark:border-gray-700">
@@ -192,19 +181,13 @@ onUnmounted(() => {
                     </div>
 
                     <!-- Close button -->
-                    <button @click="emit('close')"
+                    <button @click="emit('close')" @mousedown.stop @touchstart.stop
                             class="text-white p-2 hover:bg-white/10 rounded-full transition-colors">
                         <GIcon name="Close" :size="20" class="text-white" />
                     </button>
                 </div>
             </div>
 
-            <!-- Bottom: time left -->
-            <div class="absolute bottom-4 left-4 right-4 z-10">
-                <p class="text-white/70 text-[11px] font-medium text-center">
-                    {{ timeLeft(story.expires_at) }}
-                </p>
-            </div>
 
             <!-- Tap zones (invisible) -->
             <button @click.stop="prev"

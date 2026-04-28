@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('messages', function (Blueprint $table) {
+            $table->string('image')->nullable()->after('content');
+            $table->timestamp('pinned_at')->nullable()->after('read_at');
+            $table->timestamp('deleted_for_sender_at')->nullable()->after('pinned_at');
+            $table->timestamp('deleted_for_receiver_at')->nullable()->after('deleted_for_sender_at');
+            $table->timestamp('deleted_for_everyone_at')->nullable()->after('deleted_for_receiver_at');
+        });
+
+        // Make content nullable for image-only messages
+        \DB::statement('ALTER TABLE messages MODIFY content TEXT NULL');
+    }
+
+    public function down(): void
+    {
+        Schema::table('messages', function (Blueprint $table) {
+            $table->dropColumn(['image', 'pinned_at', 'deleted_for_sender_at', 'deleted_for_receiver_at', 'deleted_for_everyone_at']);
+        });
+        \DB::statement('ALTER TABLE messages MODIFY content TEXT NOT NULL');
+    }
+};

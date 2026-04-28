@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PostCard from '@/Components/PostCard.vue';
 import ImageLightbox from '@/Components/ImageLightbox.vue';
+import PostModal from '@/Components/PostModal.vue';
 import GIcon from '@/Components/GIcon.vue';
 import { Link, useForm, usePage, router } from '@inertiajs/vue3';
 
@@ -14,17 +15,24 @@ const isFollowing = ref(props.profileUser.is_following);
 const followersCount = ref(props.profileUser.followers_count);
 const view = ref('grid');
 const lightboxSrc = ref(null);
+const selectedPost = ref(null);
 
-// Archived posts (own profile)
+// Archived posts + stories (own profile)
 const archivedPosts = ref([]);
+const archivedStories = ref([]);
 const archivedLoaded = ref(false);
 const archivedLoading = ref(false);
+const storyLightbox = ref(null);
 
 async function loadArchived() {
     if (archivedLoaded.value) return;
     archivedLoading.value = true;
-    const res = await axios.get(route('profile.archived', { user: props.profileUser.username }));
-    archivedPosts.value = res.data.data ?? res.data;
+    const [postsRes, storiesRes] = await Promise.all([
+        axios.get(route('profile.archived', { user: props.profileUser.username })),
+        axios.get(route('profile.archived-stories', { user: props.profileUser.username })),
+    ]);
+    archivedPosts.value = postsRes.data.data ?? postsRes.data;
+    archivedStories.value = storiesRes.data;
     archivedLoaded.value = true;
     archivedLoading.value = false;
 }
@@ -32,6 +40,15 @@ async function loadArchived() {
 function switchView(v) {
     view.value = v;
     if (v === 'archived') loadArchived();
+}
+
+function formatTimeAgo(date) {
+    const diff = Math.floor((new Date() - new Date(date)) / 1000);
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m ago`;
+    if (m > 0) return `${m}m ago`;
+    return `${diff}s ago`;
 }
 
 // Followers / Following modal
@@ -166,33 +183,29 @@ function toggleFollow() {
 
             <!-- ── GRID VIEW ── -->
             <div v-if="view === 'grid'" class="mt-0">
-                <div v-if="posts.data.length === 0"
+                <div v-if="posts.data.filter(p => p.image_url).length === 0"
                      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm p-12 text-center mt-3">
                     <div class="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
                         <GIcon name="Image" :size="24" class="text-gray-300" />
                     </div>
-                    <p class="text-gray-700 dark:text-gray-200 font-semibold text-sm">No posts yet</p>
-                    <p v-if="authUser.id === profileUser.id" class="text-gray-400 text-xs mt-1.5">
-                        <Link :href="route('feed')" class="text-indigo-500 hover:underline">Share your first post</Link>
+                    <p class="text-gray-700 dark:text-gray-200 font-semibold text-sm">No photos yet</p>
+                    <p class="text-gray-400 text-xs mt-1.5">
+                        <template v-if="authUser.id === profileUser.id">
+                            <Link :href="route('feed')" class="text-indigo-500 hover:underline">Share a photo</Link>
+                            or switch to Posts to see all content
+                        </template>
+                        <template v-else>Switch to Posts to see text posts</template>
                     </p>
                 </div>
 
                 <div v-else class="grid grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700 rounded-2xl overflow-hidden">
-                    <div v-for="post in posts.data" :key="post.id"
+                    <div v-for="post in posts.data.filter(p => p.image_url)" :key="post.id"
                          class="relative bg-white dark:bg-gray-900 group cursor-pointer overflow-hidden"
                          style="aspect-ratio:1"
-                         @click="post.image_url ? lightboxSrc = post.image_url : router.visit(route('posts.show', post.id))">
+                         @click="selectedPost = post">
 
-                        <img v-if="post.image_url"
-                             :src="post.image_url"
+                        <img :src="post.image_url"
                              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-
-                        <div v-else
-                             class="w-full h-full flex items-center justify-center p-3 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950">
-                            <p class="text-[11px] text-indigo-700 dark:text-indigo-300 text-center line-clamp-4 leading-relaxed font-medium">
-                                {{ post.content }}
-                            </p>
-                        </div>
 
                         <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-200 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
                             <span class="text-white text-sm font-bold flex items-center gap-1 drop-shadow">
@@ -219,25 +232,65 @@ function toggleFollow() {
 
             <!-- ── ARCHIVE VIEW ── -->
             <div v-else-if="view === 'archived'" class="space-y-3 mt-3">
+
                 <div class="bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900/50 px-4 py-3 flex items-center gap-2">
                     <GIcon name="Bookmark" :size="16" class="text-purple-500 flex-shrink-0" />
-                    <p class="text-purple-700 dark:text-purple-300 text-xs font-medium">Archived posts are only visible to you.</p>
+                    <p class="text-purple-700 dark:text-purple-300 text-xs font-medium">Archived content is only visible to you.</p>
                 </div>
+
                 <div v-if="archivedLoading" class="flex justify-center py-10">
                     <div class="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
                 </div>
-                <div v-else-if="archivedPosts.length === 0"
-                     class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 p-12 text-center">
-                    <div class="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center mx-auto mb-3">
-                        <GIcon name="Bookmark" :size="22" class="text-purple-400" />
+
+                <template v-else>
+                    <!-- Archived Stories -->
+                    <div v-if="archivedStories.length > 0"
+                         class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden">
+                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+                            </div>
+                            <p class="text-sm font-bold text-gray-900 dark:text-white">Stories</p>
+                            <span class="text-xs text-gray-400 font-medium">{{ archivedStories.length }}</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-px bg-gray-100 dark:bg-gray-800">
+                            <div v-for="story in archivedStories" :key="story.id"
+                                 class="relative group cursor-pointer overflow-hidden bg-black"
+                                 style="aspect-ratio: 9/16; max-height: 220px;"
+                                 @click="storyLightbox = story.image_url">
+                                <img :src="story.image_url" class="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2">
+                                    <p class="text-white text-[10px] font-medium">{{ formatTimeAgo(story.created_at) }}</p>
+                                </div>
+                                <!-- Story indicator badge -->
+                                <div class="absolute top-1.5 left-1.5 w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 border border-white/60"></div>
+                            </div>
+                        </div>
                     </div>
-                    <p class="text-gray-700 dark:text-gray-200 font-semibold text-sm">No archived posts</p>
-                    <p class="text-gray-400 text-xs mt-1">Posts you archive will appear here.</p>
-                </div>
-                <PostCard v-else v-for="post in archivedPosts" :key="post.id" :post="post" />
+
+                    <!-- Archived Posts -->
+                    <div v-if="archivedPosts.length > 0" class="space-y-3">
+                        <div class="px-1 flex items-center gap-2">
+                            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Archived Posts</p>
+                            <span class="text-xs text-gray-400">{{ archivedPosts.length }}</span>
+                        </div>
+                        <PostCard v-for="post in archivedPosts" :key="post.id" :post="post" />
+                    </div>
+
+                    <!-- Both empty -->
+                    <div v-if="archivedStories.length === 0 && archivedPosts.length === 0"
+                         class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 p-12 text-center">
+                        <div class="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center mx-auto mb-3">
+                            <GIcon name="Bookmark" :size="22" class="text-purple-400" />
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-200 font-semibold text-sm">Nothing archived yet</p>
+                        <p class="text-gray-400 text-xs mt-1">Archive posts or stories to save them here privately.</p>
+                    </div>
+                </template>
             </div>
 
-            <ImageLightbox v-if="lightboxSrc" :src="lightboxSrc" @close="lightboxSrc = null" />
+            <PostModal v-if="selectedPost" :post="selectedPost" @close="selectedPost = null" />
+            <ImageLightbox v-if="storyLightbox" :src="storyLightbox" @close="storyLightbox = null" />
 
             <!-- Pagination -->
             <div v-if="posts.prev_page_url || posts.next_page_url" class="flex gap-2 justify-center pt-4 pb-2">

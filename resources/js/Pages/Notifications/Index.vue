@@ -1,9 +1,14 @@
 <script setup>
+import { ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
+import axios from 'axios';
 
-defineProps({ notifications: Object });
+const props = defineProps({ notifications: Object });
+
+const items = ref([...props.notifications.data]);
+const allRead = ref(items.value.every(n => n.read_at));
 
 function notificationLink(n) {
     if (n.type === 'follow') return route('profile.show', { user: n.data.user_username });
@@ -12,9 +17,9 @@ function notificationLink(n) {
 }
 
 const typeConfig = {
-    like: { icon: 'Heart', color: 'text-red-500 bg-red-50 dark:bg-red-950/50' },
+    like:    { icon: 'Heart',      color: 'text-red-500 bg-red-50 dark:bg-red-950/50' },
     comment: { icon: 'Annotation', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/50' },
-    follow: { icon: 'UserPlus', color: 'text-green-500 bg-green-50 dark:bg-green-950/50' },
+    follow:  { icon: 'UserPlus',   color: 'text-green-500 bg-green-50 dark:bg-green-950/50' },
 };
 
 function formatDate(date) {
@@ -24,24 +29,37 @@ function formatDate(date) {
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+
+async function markAllRead() {
+    await axios.post(route('notifications.markAllRead'));
+    items.value = items.value.map(n => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }));
+    allRead.value = true;
+}
 </script>
 
 <template>
     <AppLayout>
         <div class="max-w-xl mx-auto">
             <div class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm overflow-hidden">
-                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-                    <h2 class="font-bold text-gray-900 dark:text-white text-lg">Notifications</h2>
-                    <p class="text-gray-400 text-xs mt-0.5">Activity on your posts</p>
+                <div class="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                    <div>
+                        <h2 class="font-bold text-gray-900 dark:text-white text-lg">Notifications</h2>
+                        <p class="text-gray-400 text-xs mt-0.5">Activity on your posts</p>
+                    </div>
+                    <button v-if="!allRead && items.length > 0"
+                            @click="markAllRead"
+                            class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors">
+                        Mark all as read
+                    </button>
                 </div>
 
-                <div v-if="notifications.data.length === 0" class="p-14 text-center">
+                <div v-if="items.length === 0" class="p-14 text-center">
                     <div class="text-5xl mb-4">🔔</div>
                     <p class="text-gray-800 dark:text-gray-200 font-bold">All caught up!</p>
                     <p class="text-gray-400 text-sm mt-2">No notifications yet.</p>
                 </div>
 
-                <a v-for="n in notifications.data" :key="n.id"
+                <a v-for="n in items" :key="n.id"
                    :href="notificationLink(n)"
                    class="flex items-center gap-4 px-5 py-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
                    :class="!n.read_at ? 'bg-indigo-50/40 dark:bg-indigo-950/20' : ''">

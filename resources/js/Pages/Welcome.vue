@@ -8,19 +8,22 @@ defineProps({
 </script>
 
 <template>
-    <Head title="Welcome to SocialApp" />
+    <Head title="Welcome to Sociala" />
 
     <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col">
 
         <!-- Nav -->
         <nav class="px-6 py-4 flex items-center justify-between max-w-6xl mx-auto w-full">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                <div class="w-8 h-8 bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-md">
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/>
+                        <circle cx="12" cy="10" r="1" fill="currentColor" stroke="none"/>
+                        <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>
                     </svg>
                 </div>
-                <span class="text-xl font-bold text-indigo-600">SocialApp</span>
+                <span class="text-xl font-black tracking-tight bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-transparent">Sociala</span>
             </div>
             <div class="flex items-center gap-3" v-if="canLogin">
                 <Link :href="route('login')"
