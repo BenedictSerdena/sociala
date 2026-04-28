@@ -2,6 +2,9 @@
 import { ref } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
+import { useToast } from '@/composables/useToast.js';
+
+const { show: toast } = useToast();
 
 const page = usePage();
 const user = page.props.auth.user;
@@ -25,7 +28,7 @@ function submit() {
     form.post(route('posts.store'), {
         preserveScroll: true,
         forceFormData: true,
-        onSuccess: () => { form.reset(); previewUrl.value = null; focused.value = false; },
+        onSuccess: () => { form.reset(); previewUrl.value = null; focused.value = false; toast('Post shared!', 'success'); },
     });
 }
 </script>
@@ -41,7 +44,13 @@ function submit() {
                           @focus="focused = true" @blur="focused = false"
                           placeholder="What's on your mind?"
                           class="w-full resize-none outline-none text-gray-800 placeholder-gray-400 text-sm leading-relaxed bg-transparent"
-                          :rows="focused || form.content ? 3 : 1"></textarea>
+                          :rows="focused || form.content ? 3 : 1"
+                          maxlength="1000"></textarea>
+                <p v-if="focused || form.content"
+                   class="text-right text-xs mt-0.5 transition-colors"
+                   :class="form.content.length >= 1000 ? 'text-red-500 font-semibold' : form.content.length >= 900 ? 'text-orange-400' : 'text-gray-300'">
+                    {{ 1000 - form.content.length }}
+                </p>
             </div>
         </div>
 

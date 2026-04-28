@@ -2,6 +2,11 @@
 import { ref } from 'vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
+import ImageLightbox from '@/Components/ImageLightbox.vue';
+import { useToast } from '@/composables/useToast.js';
+import PostContent from '@/Components/PostContent.vue';
+
+const { show: toast } = useToast();
 
 const props = defineProps({ post: Object });
 const page = usePage();
@@ -13,7 +18,12 @@ const showComments = ref(false);
 const comments = ref(props.post.comments?.data ?? props.post.comments ?? []);
 const commentForm = useForm({ content: '' });
 const likeAnimating = ref(false);
-const bookmarked = ref(false);
+const bookmarked = ref(props.post.is_bookmarked ?? false);
+
+const editing = ref(false);
+const editContent = ref(props.post.content);
+const editSaving = ref(false);
+const lightboxOpen = ref(false);
 
 function formatDate(date) {
     const d = new Date(date);
@@ -22,6 +32,22 @@ function formatDate(date) {
     if (diff < 3600) return `${Math.floor(diff / 60)}m`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+async function toggleBookmark() {
+    const res = await axios.post(route('bookmarks.toggle', props.post.id));
+    bookmarked.value = res.data.bookmarked;
+    toast(bookmarked.value ? 'Post saved' : 'Removed from saved', 'success');
+}
+
+async function saveEdit() {
+    if (!editContent.value.trim() || editSaving.value) return;
+    editSaving.value = true;
+    const res = await axios.put(route('posts.update', props.post.id), { content: editContent.value });
+    props.post.content = res.data.content;
+    editing.value = false;
+    editSaving.value = false;
+    toast('Post updated', 'success');
 }
 
 async function toggleLike() {
@@ -47,7 +73,10 @@ function deleteComment(commentId) {
 
 function deletePost() {
     if (!confirm('Delete this post?')) return;
-    useForm({}).delete(route('posts.destroy', props.post.id), { preserveScroll: true });
+    useForm({}).delete(route('posts.destroy', props.post.id), {
+        preserveScroll: true,
+        onSuccess: () => toast('Post deleted', 'success'),
+    });
 }
 </script>
 
@@ -67,20 +96,42 @@ function deletePost() {
                 </div>
             </Link>
 
-            <button v-if="post.user.id === authUser.id" @click="deletePost"
-                    class="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all">
-                <GIcon name="Trash" :size="16" />
-            </button>
+            <div v-if="post.user.id === authUser.id" class="flex items-center gap-1">
+                <button @click="editing = !editing"
+                        class="p-1.5 rounded-lg text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 transition-all">
+                    <GIcon name="Edit" :size="16" />
+                </button>
+                <button @click="deletePost"
+                        class="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all">
+                    <GIcon name="Trash" :size="16" />
+                </button>
+            </div>
         </div>
 
-        <!-- ── Caption ── -->
+        <!-- ── Caption / Edit mode ── -->
         <div class="px-4 pb-3">
-            <p class="text-gray-800 text-sm leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+            <div v-if="editing" class="space-y-2">
+                <textarea v-model="editContent" rows="3" autofocus
+                          class="w-full text-sm text-gray-800 border border-indigo-300 rounded-xl px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-gray-50"></textarea>
+                <div class="flex gap-2 justify-end">
+                    <button @click="editing = false; editContent = post.content"
+                            class="px-3 py-1 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-all">Cancel</button>
+                    <button @click="saveEdit" :disabled="editSaving || !editContent.trim()"
+                            class="px-3 py-1 text-xs font-semibold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 transition-all">
+                        {{ editSaving ? 'Saving…' : 'Save' }}
+                    </button>
+                </div>
+            </div>
+            <PostContent v-else :content="post.content" />
         </div>
 
         <!-- ── Image ── -->
         <img v-if="post.image_url" :src="post.image_url"
-             class="w-full object-cover max-h-[520px]" />
+             class="w-full object-cover max-h-[520px] cursor-zoom-in"
+             @click="lightboxOpen = true" />
+        <ImageLightbox v-if="lightboxOpen && post.image_url"
+                       :src="post.image_url"
+                       @close="lightboxOpen = false" />
 
         <!-- ── Action Bar (Instagram-style) ── -->
         <div class="flex items-center justify-between px-3 py-2.5 border-t border-gray-100/80">
@@ -103,7 +154,7 @@ function deletePost() {
             </div>
 
             <!-- Bookmark -->
-            <button @click="bookmarked = !bookmarked"
+            <button @click="toggleBookmark"
                     class="p-2 rounded-xl transition-all"
                     :class="bookmarked ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500 hover:bg-indigo-50/60'">
                 <GIcon name="Bookmark" :size="20" :filled="bookmarked" />

@@ -96,10 +96,13 @@ function submit() {
 
                         <div>
                             <label class="block text-sm font-semibold text-gray-700 mb-1.5">Bio</label>
-                            <textarea v-model="form.bio" rows="3"
+                            <textarea v-model="form.bio" rows="3" maxlength="300"
                                       class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all"
                                       placeholder="Tell people about yourself…"></textarea>
-                            <p class="text-xs text-gray-400 mt-1 text-right">{{ form.bio.length }}/300</p>
+                            <p class="text-xs mt-1 text-right"
+                               :class="form.bio.length >= 300 ? 'text-red-500 font-semibold' : form.bio.length >= 280 ? 'text-orange-400' : 'text-gray-400'">
+                                {{ form.bio.length }}/300
+                            </p>
                             <p v-if="form.errors.bio" class="text-red-500 text-xs mt-1">{{ form.errors.bio }}</p>
                         </div>
 

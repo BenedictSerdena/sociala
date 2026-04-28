@@ -1,13 +1,17 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import GIcon from '@/Components/GIcon.vue';
+import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     stories: Array,
     startIndex: { type: Number, default: 0 },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'deleted']);
+const authUser = usePage().props.auth.user;
+const isOwn = computed(() => story.value?.user?.id === authUser.id);
+const deleting = ref(false);
 
 const current = ref(props.startIndex);
 const progress = ref(0);
@@ -54,6 +58,14 @@ function formatTime(date) {
     return `${Math.floor(diff / 3600)}h ago`;
 }
 
+async function deleteStory() {
+    if (deleting.value) return;
+    deleting.value = true;
+    await axios.delete(route('stories.destroy', story.value.id));
+    emit('deleted', story.value.id);
+    emit('close');
+}
+
 function onKeyDown(e) {
     if (e.key === 'Escape') emit('close');
     if (e.key === 'ArrowRight') next();
@@ -92,9 +104,15 @@ onUnmounted(() => {
                     <p class="text-white text-opacity-70 text-xs">{{ formatTime(story.created_at) }}</p>
                 </div>
             </div>
-            <button @click="emit('close')" class="text-white p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
-                <GIcon name="Close" :size="22" class="text-white" />
-            </button>
+            <div class="flex items-center gap-1">
+                <button v-if="isOwn" @click="deleteStory" :disabled="deleting"
+                        class="text-white p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors disabled:opacity-40">
+                    <GIcon name="Trash" :size="20" class="text-white" />
+                </button>
+                <button @click="emit('close')" class="text-white p-2 hover:bg-white hover:bg-opacity-10 rounded-full transition-colors">
+                    <GIcon name="Close" :size="22" class="text-white" />
+                </button>
+            </div>
         </div>
 
         <!-- Story Image -->

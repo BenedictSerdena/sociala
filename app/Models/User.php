@@ -77,6 +77,11 @@ class User extends Authenticatable
         return $this->hasMany(Story::class);
     }
 
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
+    }
+
     public function isFollowing(User $user): bool
     {
         return $this->following()->where('following_id', $user->id)->exists();

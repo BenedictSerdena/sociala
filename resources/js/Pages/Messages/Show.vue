@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
@@ -10,7 +10,9 @@ const authUser = page.props.auth.user;
 const messages = ref(props.messages);
 const newMessage = ref('');
 const messagesContainer = ref(null);
+const isTyping = ref(false);
 let channel = null;
+let typingTimeout = null;
 
 function formatTime(date) {
     return new Date(date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -26,18 +28,53 @@ function formatDate(date) {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// Index of the last message sent by authUser that has been read
+const lastReadIndex = computed(() => {
+    for (let i = messages.value.length - 1; i >= 0; i--) {
+        if (messages.value[i].sender_id === authUser.id && messages.value[i].read_at) {
+            return i;
+        }
+    }
+    return -1;
+});
+
 onMounted(() => {
     scrollToBottom();
     channel = window.Echo.private(`chat.${authUser.id}`)
         .listen('MessageSent', (e) => {
             if (e.sender.id === props.chatUser.id) {
-                messages.value.push({ id: e.id, content: e.content, sender: e.sender, sender_id: e.sender.id, created_at: e.created_at });
+                messages.value.push({ id: e.id, content: e.content, sender: e.sender, sender_id: e.sender.id, created_at: e.created_at, read_at: null });
+                // Mark delivered messages as read since we're in the conversation
+                axios.post(route('messages.read', props.chatUser.id));
                 scrollToBottom();
             }
+        })
+        .listenForWhisper('typing', () => {
+            isTyping.value = true;
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => { isTyping.value = false; }, 2500);
+        })
+        .listenForWhisper('read', () => {
+            // Other person opened chat — mark our sent messages as read
+            messages.value.forEach(m => {
+                if (m.sender_id === authUser.id && !m.read_at) {
+                    m.read_at = new Date().toISOString();
+                }
+            });
         });
+
+    // Tell the other person we've read their messages
+    channel.whisper('read', {});
 });
 
-onUnmounted(() => { if (channel) window.Echo.leave(`chat.${authUser.id}`); });
+onUnmounted(() => {
+    if (channel) window.Echo.leave(`chat.${authUser.id}`);
+    clearTimeout(typingTimeout);
+});
+
+function onTyping() {
+    channel?.whisper('typing', { user: authUser.id });
+}
 
 async function sendMessage() {
     if (!newMessage.value.trim()) return;
@@ -63,13 +100,12 @@ async function scrollToBottom() {
                 <Link :href="route('messages.index')" class="p-1.5 rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
                     <GIcon name="ChevronLeft" :size="20" />
                 </Link>
-                <div class="relative">
-                    <img :src="chatUser.avatar_url" class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100" />
-                    <div class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                </div>
+                <img :src="chatUser.avatar_url" class="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100" />
                 <div>
                     <p class="font-bold text-gray-900 text-sm">{{ chatUser.name }}</p>
-                    <p class="text-green-500 text-xs font-semibold">Online</p>
+                    <p class="text-xs transition-all" :class="isTyping ? 'text-indigo-500 font-medium' : 'text-gray-400'">
+                        {{ isTyping ? 'typing…' : '@' + chatUser.username }}
+                    </p>
                 </div>
             </div>
 
@@ -95,7 +131,25 @@ async function scrollToBottom() {
                                 <p class="text-[10px] text-gray-400 mt-1 font-medium" :class="msg.sender_id === authUser.id ? 'text-right' : 'text-left'">
                                     {{ formatTime(msg.created_at) }}
                                 </p>
+                                <!-- Seen receipt — only on the last read sent message -->
+                                <p v-if="msg.sender_id === authUser.id && i === lastReadIndex"
+                                   class="text-[10px] text-indigo-400 font-semibold text-right mt-0.5 flex items-center justify-end gap-1">
+                                    <img :src="chatUser.avatar_url" class="w-3 h-3 rounded-full object-cover" />
+                                    Seen
+                                </p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Typing indicator bubble -->
+                <div v-if="isTyping" class="flex justify-start mb-2">
+                    <div class="flex items-end gap-2">
+                        <img :src="chatUser.avatar_url" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                        <div class="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm flex gap-1 items-center">
+                            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
+                            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
+                            <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
                         </div>
                     </div>
                 </div>
@@ -110,7 +164,7 @@ async function scrollToBottom() {
             <!-- Input -->
             <div class="border-t border-gray-100 px-4 py-3 bg-white rounded-b-2xl">
                 <div class="flex gap-2 items-center">
-                    <input v-model="newMessage" @keyup.enter="sendMessage"
+                    <input v-model="newMessage" @keyup.enter="sendMessage" @input="onTyping"
                            placeholder="Type a message…"
                            class="flex-1 border border-gray-200 bg-gray-50 rounded-full px-5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white transition-all" />
                     <button @click="sendMessage" :disabled="!newMessage.trim()"

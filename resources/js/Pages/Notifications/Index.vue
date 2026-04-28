@@ -7,7 +7,7 @@ defineProps({ notifications: Object });
 
 function notificationLink(n) {
     if (n.type === 'follow') return route('profile.show', { user: n.data.user_username });
-    if (n.data.post_id) return route('feed');
+    if (n.data.post_id) return route('posts.show', n.data.post_id);
     return '#';
 }
 

@@ -16,13 +16,18 @@ const props = defineProps({
 const page = usePage();
 const currentUser = page.props.auth.user;
 
+const storiesList = ref([...props.stories]);
 const viewerOpen = ref(false);
 const viewerStartIndex = ref(0);
 
 function openStory(story) {
-    const idx = props.stories.findIndex(s => s.id === story.id);
+    const idx = storiesList.value.findIndex(s => s.id === story.id);
     viewerStartIndex.value = idx >= 0 ? idx : 0;
     viewerOpen.value = true;
+}
+
+function onStoryDeleted(storyId) {
+    storiesList.value = storiesList.value.filter(s => s.id !== storyId);
 }
 
 function followUser(userId) {
@@ -34,17 +39,18 @@ function followUser(userId) {
     <AppLayout>
 
         <!-- Story Viewer Modal -->
-        <StoryViewer v-if="viewerOpen && stories.length"
-                     :stories="stories"
+        <StoryViewer v-if="viewerOpen && storiesList.length"
+                     :stories="storiesList"
                      :start-index="viewerStartIndex"
-                     @close="viewerOpen = false" />
+                     @close="viewerOpen = false"
+                     @deleted="onStoryDeleted" />
 
         <div class="flex gap-6">
             <!-- ── Main Feed (F-pattern: stories first, then posts) ── -->
             <div class="flex-1 min-w-0 max-w-xl mx-auto lg:mx-0 space-y-4">
 
                 <!-- Stories Row -->
-                <Stories :stories="stories" :current-user="currentUser" @open-story="openStory" />
+                <Stories :stories="storiesList" :current-user="currentUser" @open-story="openStory" />
 
                 <!-- Post Form -->
                 <PostForm />

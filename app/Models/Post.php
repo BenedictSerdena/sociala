@@ -11,7 +11,7 @@ class Post extends Model
 
     protected $fillable = ['user_id', 'content', 'image'];
 
-    protected $appends = ['image_url', 'likes_count', 'comments_count', 'is_liked'];
+    protected $appends = ['image_url', 'likes_count', 'comments_count', 'is_liked', 'is_bookmarked'];
 
     public function user()
     {
@@ -26,6 +26,11 @@ class Post extends Model
     public function likes()
     {
         return $this->hasMany(Like::class);
+    }
+
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
     }
 
     public function getImageUrlAttribute(): ?string
@@ -47,5 +52,11 @@ class Post extends Model
     {
         if (!auth()->check()) return false;
         return $this->likes()->where('user_id', auth()->id())->exists();
+    }
+
+    public function getIsBookmarkedAttribute(): bool
+    {
+        if (!auth()->check()) return false;
+        return $this->bookmarks()->where('user_id', auth()->id())->exists();
     }
 }

@@ -34,7 +34,12 @@ const needed = {
     UserCheck: { regular: true },
     UserMinus: { regular: true },
     Users: { regular: true },
+    // edit
+    Edit: { regular: true },
+    // search
+    Search: { regular: true, filled: true },
     // misc
+    CheckCircle: { regular: true },
     MoreHorizontal: { regular: true },
     DotsHorizontal: { regular: true },
 };
