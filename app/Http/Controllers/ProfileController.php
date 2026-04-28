@@ -17,7 +17,17 @@ class ProfileController extends Controller
 {
     public function show(User $user): Response
     {
-        $posts = $user->posts()->with('user')->latest()->paginate(12);
+        $isOwnProfile = auth()->check() && auth()->id() === $user->id;
+
+        $postsQuery = $user->posts()->with('user')->latest();
+
+        if ($isOwnProfile) {
+            $postsQuery->whereIn('visibility', ['public', 'private']);
+        } else {
+            $postsQuery->where('visibility', 'public');
+        }
+
+        $posts = $postsQuery->paginate(12);
 
         return Inertia::render('Profile/Show', [
             'profileUser' => array_merge($user->toArray(), [
@@ -29,6 +39,40 @@ class ProfileController extends Controller
             ]),
             'posts' => $posts,
         ]);
+    }
+
+    public function archived(User $user)
+    {
+        abort_if(auth()->id() !== $user->id, 403);
+
+        $posts = $user->posts()
+            ->with('user')
+            ->where('visibility', 'archived')
+            ->latest()
+            ->paginate(12);
+
+        return response()->json($posts);
+    }
+
+    public function archivedStories(User $user)
+    {
+        abort_if(auth()->id() !== $user->id, 403);
+
+        $stories = $user->stories()
+            ->with('user')
+            ->whereNotNull('archived_at')
+            ->latest()
+            ->get()
+            ->map(fn($s) => [
+                'id' => $s->id,
+                'image_url' => $s->image_url,
+                'created_at' => $s->created_at,
+                'expires_at' => $s->expires_at,
+                'archived_at' => $s->archived_at,
+                'user' => array_merge($s->user->toArray(), ['avatar_url' => $s->user->avatar_url]),
+            ]);
+
+        return response()->json($stories);
     }
 
     public function followers(User $user)

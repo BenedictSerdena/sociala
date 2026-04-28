@@ -24,6 +24,13 @@ class StoryController extends Controller
         return back();
     }
 
+    public function archive(Story $story)
+    {
+        abort_if($story->user_id !== auth()->id(), 403);
+        $story->update(['archived_at' => now()]);
+        return response()->json(['archived' => true]);
+    }
+
     public function destroy(Story $story)
     {
         abort_if($story->user_id !== auth()->id(), 403);

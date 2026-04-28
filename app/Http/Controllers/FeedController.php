@@ -12,19 +12,31 @@ class FeedController extends Controller
     {
         $followingIds = auth()->user()->following()->pluck('following_id');
 
+        $authId = auth()->id();
+
         $posts = Post::with('user')
-            ->whereIn('user_id', $followingIds->push(auth()->id()))
+            ->where(function ($query) use ($followingIds, $authId) {
+                $query->where(function ($q) use ($authId) {
+                    $q->where('user_id', $authId)
+                      ->whereIn('visibility', ['public', 'private']);
+                })->orWhere(function ($q) use ($followingIds) {
+                    $q->whereIn('user_id', $followingIds)
+                      ->where('visibility', 'public');
+                });
+            })
             ->latest()
             ->paginate(15);
 
-        $suggestions = \App\Models\User::whereNotIn('id', $followingIds->push(auth()->id()))
+        $allIds = $followingIds->push($authId)->unique();
+
+        $suggestions = \App\Models\User::whereNotIn('id', $allIds)
             ->withCount('followers')
             ->orderByDesc('followers_count')
             ->limit(5)
             ->get()
             ->map(fn($u) => array_merge($u->toArray(), ['avatar_url' => $u->avatar_url]));
 
-        $storyUserIds = $followingIds->push(auth()->id())->unique();
+        $storyUserIds = $allIds;
         $stories = Story::active()
             ->with('user')
             ->whereIn('user_id', $storyUserIds)

@@ -62,6 +62,10 @@ function onStoryDeleted(storyId) {
     storiesList.value = storiesList.value.filter(s => s.id !== storyId);
 }
 
+function onStoryArchived(storyId) {
+    storiesList.value = storiesList.value.filter(s => s.id !== storyId);
+}
+
 function followUser(userId) {
     useForm({}).post(route('follows.toggle', userId), { preserveScroll: true });
 }
@@ -74,7 +78,8 @@ function followUser(userId) {
                      :stories="storiesList"
                      :start-index="viewerStartIndex"
                      @close="viewerOpen = false"
-                     @deleted="onStoryDeleted" />
+                     @deleted="onStoryDeleted"
+                     @archived="onStoryArchived" />
 
         <div class="flex gap-6">
             <!-- ── Main Feed ── -->

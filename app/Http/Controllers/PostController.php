@@ -43,11 +43,28 @@ class PostController extends Controller
 
         $validated = $request->validate([
             'content' => 'required|string|max:2000',
+            'visibility' => 'sometimes|in:public,private,archived',
         ]);
 
-        $post->update(['content' => $validated['content']]);
+        $post->update($validated);
 
-        return response()->json(['content' => $post->content]);
+        return response()->json([
+            'content' => $post->content,
+            'visibility' => $post->visibility,
+        ]);
+    }
+
+    public function setVisibility(Request $request, Post $post)
+    {
+        abort_if($post->user_id !== auth()->id(), 403);
+
+        $validated = $request->validate([
+            'visibility' => 'required|in:public,private,archived',
+        ]);
+
+        $post->update(['visibility' => $validated['visibility']]);
+
+        return response()->json(['visibility' => $post->visibility]);
     }
 
     public function destroy(Post $post)

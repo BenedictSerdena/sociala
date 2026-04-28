@@ -37,6 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->name('comments.index');
     Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->name('comments.store');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+    Route::post('/comments/{comment}/report', [CommentController::class, 'report'])->name('comments.report');
 
     Route::post('/posts/{post}/like', [LikeController::class, 'toggle'])->name('likes.toggle');
     Route::post('/posts/{post}/bookmark', [BookmarkController::class, 'toggle'])->name('bookmarks.toggle');
@@ -65,7 +66,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/hashtags/{tag}', [HashtagController::class, 'show'])->name('hashtags.show');
 
     Route::post('/stories', [StoryController::class, 'store'])->name('stories.store');
+    Route::post('/stories/{story}/archive', [StoryController::class, 'archive'])->name('stories.archive');
     Route::delete('/stories/{story}', [StoryController::class, 'destroy'])->name('stories.destroy');
+
+    Route::post('/posts/{post}/visibility', [PostController::class, 'setVisibility'])->name('posts.visibility');
+
+    Route::get('/users/{user:username}/archived-stories', [ProfileController::class, 'archivedStories'])->name('profile.archived-stories');
+    Route::get('/users/{user:username}/archived-posts', [ProfileController::class, 'archived'])->name('profile.archived');
 });
 
 require __DIR__ . '/auth.php';

@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Story extends Model
 {
-    protected $fillable = ['user_id', 'image', 'expires_at'];
+    protected $fillable = ['user_id', 'image', 'expires_at', 'archived_at'];
 
-    protected $casts = ['expires_at' => 'datetime'];
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'archived_at' => 'datetime',
+    ];
 
     public function user()
     {
@@ -17,7 +20,7 @@ class Story extends Model
 
     public function scopeActive($query)
     {
-        return $query->where('expires_at', '>', now());
+        return $query->where('expires_at', '>', now())->whereNull('archived_at');
     }
 
     public function getImageUrlAttribute(): string

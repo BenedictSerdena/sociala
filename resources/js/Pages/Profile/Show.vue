@@ -9,13 +9,33 @@ import { Link, useForm, usePage, router } from '@inertiajs/vue3';
 const props = defineProps({ profileUser: Object, posts: Object });
 const page = usePage();
 const authUser = page.props.auth.user;
+const isOwnProfile = authUser.id === props.profileUser.id;
 const isFollowing = ref(props.profileUser.is_following);
 const followersCount = ref(props.profileUser.followers_count);
 const view = ref('grid');
 const lightboxSrc = ref(null);
 
+// Archived posts (own profile)
+const archivedPosts = ref([]);
+const archivedLoaded = ref(false);
+const archivedLoading = ref(false);
+
+async function loadArchived() {
+    if (archivedLoaded.value) return;
+    archivedLoading.value = true;
+    const res = await axios.get(route('profile.archived', { user: props.profileUser.username }));
+    archivedPosts.value = res.data.data ?? res.data;
+    archivedLoaded.value = true;
+    archivedLoading.value = false;
+}
+
+function switchView(v) {
+    view.value = v;
+    if (v === 'archived') loadArchived();
+}
+
 // Followers / Following modal
-const peopleModal = ref(null); // null | 'followers' | 'following'
+const peopleModal = ref(null);
 const peopleList = ref([]);
 const peopleLoading = ref(false);
 
@@ -119,31 +139,33 @@ function toggleFollow() {
 
                 <!-- View toggle tabs -->
                 <div class="flex border-t border-gray-100 dark:border-gray-800">
-                    <button @click="view = 'grid'"
+                    <button @click="switchView('grid')"
                             class="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold transition-all border-b-2"
-                            :class="view === 'grid'
-                                ? 'border-indigo-600 text-indigo-600'
-                                : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                            :class="view === 'grid' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M3 3h8v8H3zm0 10h8v8H3zm10-10h8v8h-8zm0 10h8v8h-8z"/>
                         </svg>
                         Grid
                     </button>
-                    <button @click="view = 'list'"
+                    <button @click="switchView('list')"
                             class="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold transition-all border-b-2"
-                            :class="view === 'list'
-                                ? 'border-indigo-600 text-indigo-600'
-                                : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                            :class="view === 'list' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
                         </svg>
                         Posts
                     </button>
+                    <button v-if="isOwnProfile" @click="switchView('archived')"
+                            class="flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold transition-all border-b-2"
+                            :class="view === 'archived' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'">
+                        <GIcon name="Bookmark" :size="14" />
+                        Archive
+                    </button>
                 </div>
             </div>
 
             <!-- ── GRID VIEW ── -->
-            <div v-if="view === 'grid'">
+            <div v-if="view === 'grid'" class="mt-0">
                 <div v-if="posts.data.length === 0"
                      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm p-12 text-center mt-3">
                     <div class="w-14 h-14 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-3">
@@ -187,12 +209,32 @@ function toggleFollow() {
             </div>
 
             <!-- ── LIST VIEW ── -->
-            <div v-else class="space-y-3 mt-3">
+            <div v-else-if="view === 'list'" class="space-y-3 mt-3">
                 <div v-if="posts.data.length === 0"
                      class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 p-12 text-center">
                     <p class="text-gray-700 dark:text-gray-300 font-semibold text-sm">No posts yet</p>
                 </div>
                 <PostCard v-for="post in posts.data" :key="post.id" :post="post" />
+            </div>
+
+            <!-- ── ARCHIVE VIEW ── -->
+            <div v-else-if="view === 'archived'" class="space-y-3 mt-3">
+                <div class="bg-purple-50 dark:bg-purple-950/30 rounded-2xl border border-purple-100 dark:border-purple-900/50 px-4 py-3 flex items-center gap-2">
+                    <GIcon name="Bookmark" :size="16" class="text-purple-500 flex-shrink-0" />
+                    <p class="text-purple-700 dark:text-purple-300 text-xs font-medium">Archived posts are only visible to you.</p>
+                </div>
+                <div v-if="archivedLoading" class="flex justify-center py-10">
+                    <div class="w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div v-else-if="archivedPosts.length === 0"
+                     class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 p-12 text-center">
+                    <div class="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 flex items-center justify-center mx-auto mb-3">
+                        <GIcon name="Bookmark" :size="22" class="text-purple-400" />
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-200 font-semibold text-sm">No archived posts</p>
+                    <p class="text-gray-400 text-xs mt-1">Posts you archive will appear here.</p>
+                </div>
+                <PostCard v-else v-for="post in archivedPosts" :key="post.id" :post="post" />
             </div>
 
             <ImageLightbox v-if="lightboxSrc" :src="lightboxSrc" @close="lightboxSrc = null" />
