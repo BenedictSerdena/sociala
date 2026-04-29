@@ -32,6 +32,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Show', [
             'profileUser' => array_merge($user->toArray(), [
                 'avatar_url' => $user->avatar_url,
+                'cover_photo_url' => $user->cover_photo_url,
                 'followers_count' => $user->followers()->count(),
                 'following_count' => $user->following()->count(),
                 'posts_count' => $user->posts()->count(),
@@ -100,6 +101,7 @@ class ProfileController extends Controller
             'status' => session('status'),
             'user' => array_merge(auth()->user()->toArray(), [
                 'avatar_url' => auth()->user()->avatar_url,
+                'cover_photo_url' => auth()->user()->cover_photo_url,
             ]),
         ]);
     }

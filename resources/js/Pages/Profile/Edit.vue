@@ -24,7 +24,7 @@ const tabs = [
 
 // ── Profile form ──
 const avatarPreview = ref(props.user.avatar_url);
-const coverPreview = ref(props.user.cover_photo ?? null);
+const coverPreview = ref(props.user.cover_photo_url ?? null);
 const profileForm = useForm({
     name: props.user.name,
     username: props.user.username,

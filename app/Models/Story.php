@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesMediaUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class Story extends Model
 {
+    use ResolvesMediaUrl;
+
     protected $fillable = ['user_id', 'image', 'expires_at', 'archived_at'];
 
     protected $casts = [
@@ -36,7 +39,7 @@ class Story extends Model
 
     public function getImageUrlAttribute(): string
     {
-        return $this->image;
+        return $this->resolveMediaUrl($this->image) ?? '';
     }
 
     public function getLikesCountAttribute(): int

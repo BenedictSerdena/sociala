@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesMediaUrl;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -12,6 +13,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+    use ResolvesMediaUrl;
 
     protected $fillable = [
         'name',
@@ -27,7 +29,7 @@ class User extends Authenticatable
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $appends = ['avatar_url'];
+    protected $appends = ['avatar_url', 'cover_photo_url'];
 
     protected function casts(): array
     {
@@ -101,7 +103,12 @@ class User extends Authenticatable
 
     public function getAvatarUrlAttribute(): string
     {
-        return $this->avatar
+        return $this->resolveMediaUrl($this->avatar)
             ?? 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=6366f1&color=fff';
+    }
+
+    public function getCoverPhotoUrlAttribute(): ?string
+    {
+        return $this->resolveMediaUrl($this->cover_photo);
     }
 }

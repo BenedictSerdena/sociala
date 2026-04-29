@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ResolvesMediaUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 class Post extends Model
 {
     use HasFactory;
+    use ResolvesMediaUrl;
 
     protected $fillable = ['user_id', 'content', 'image', 'visibility'];
 
@@ -36,7 +38,7 @@ class Post extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ?? null;
+        return $this->resolveMediaUrl($this->image);
     }
 
     public function getLikesCountAttribute(): int
