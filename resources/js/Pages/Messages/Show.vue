@@ -185,8 +185,7 @@ async function sendMessage() {
 function openContextMenu(e, msg) {
     e.preventDefault();
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    contextMenu.value = { x: rect.right, y: rect.bottom, message: msg };
+    contextMenu.value = contextMenu.value?.message?.id === msg.id ? null : { message: msg };
 }
 function closeContextMenu() { contextMenu.value = null; }
 
@@ -235,41 +234,8 @@ function handleKeydown(e) {
                    :channel-name="callChannelName" @close="callOpen = false" />
         <IncomingCallModal :call="incomingCall" @accept="acceptCall" @decline="declineCall" />
 
-        <!-- Context menu -->
-        <Teleport to="body">
-            <div v-if="contextMenu" class="fixed inset-0 z-50" @click="closeContextMenu" @contextmenu.prevent="closeContextMenu">
-                <div class="absolute bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden min-w-44 py-1"
-                     :style="{ top: Math.min(contextMenu.y, window.innerHeight - 200) + 'px', left: Math.min(contextMenu.x, window.innerWidth - 200) + 'px' }">
-
-                    <button @click="togglePin(contextMenu.message)"
-                            class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                        <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                        {{ contextMenu.message.pinned_at ? 'Unpin Message' : 'Pin Message' }}
-                    </button>
-
-                    <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
-
-                    <button @click="deleteForMe(contextMenu.message)"
-                            class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete for Me
-                    </button>
-
-                    <button v-if="contextMenu.message.sender_id === authUser.id && !contextMenu.message.deleted_for_everyone"
-                            @click="deleteForEveryone(contextMenu.message)"
-                            class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                        </svg>
-                        Delete for Everyone
-                    </button>
-                </div>
-            </div>
-        </Teleport>
+        <!-- Close menu on outside click -->
+        <div v-if="contextMenu" class="fixed inset-0 z-40" @click="closeContextMenu"></div>
 
         <div class="max-w-xl mx-auto bg-white dark:bg-gray-900 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-sm flex flex-col" style="height:calc(100vh - 120px)">
 
@@ -370,6 +336,39 @@ function handleKeydown(e) {
                                                 <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
                                             </svg>
                                         </button>
+
+                                        <!-- Inline dropdown -->
+                                        <div v-if="contextMenu?.message?.id === msg.id"
+                                             class="absolute z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden min-w-44 py-1 mt-1"
+                                             :class="msg.sender_id === authUser.id ? 'right-0' : 'left-0'">
+
+                                            <button @click.stop="togglePin(msg); closeContextMenu()"
+                                                    class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
+                                                <svg class="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                </svg>
+                                                {{ msg.pinned_at ? 'Unpin Message' : 'Pin Message' }}
+                                            </button>
+
+                                            <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
+                                            <button @click.stop="deleteForMe(msg)"
+                                                    class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Delete for Me
+                                            </button>
+
+                                            <button v-if="msg.sender_id === authUser.id && !msg.deleted_for_everyone"
+                                                    @click.stop="deleteForEveryone(msg)"
+                                                    class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors text-left">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Delete for Everyone
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <!-- Bubble wrapper -->
