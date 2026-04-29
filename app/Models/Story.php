@@ -31,7 +31,7 @@ class Story extends Model
 
     public function getImageUrlAttribute(): string
     {
-        return Storage::url($this->image);
+        return $this->image;
     }
 
     public function getLikesCountAttribute(): int

@@ -117,13 +117,13 @@ class ProfileController extends Controller
         $user = $request->user();
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) Storage::delete($user->avatar);
-            $validated['avatar'] = $request->file('avatar')->store('avatars', config('filesystems.default'));
+            $file = $request->file('avatar');
+            $validated['avatar'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         if ($request->hasFile('cover_photo')) {
-            if ($user->cover_photo) Storage::delete($user->cover_photo);
-            $validated['cover_photo'] = $request->file('cover_photo')->store('covers', config('filesystems.default'));
+            $file = $request->file('cover_photo');
+            $validated['cover_photo'] = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         $user->update($validated);

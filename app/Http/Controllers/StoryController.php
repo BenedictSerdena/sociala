@@ -15,7 +15,8 @@ class StoryController extends Controller
             'image' => 'required|image|max:10240',
         ]);
 
-        $path = $request->file('image')->store('stories', config('filesystems.default'));
+        $file = $request->file('image');
+        $path = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
 
         $story = auth()->user()->stories()->create([
             'image' => $path,
@@ -42,7 +43,7 @@ class StoryController extends Controller
     public function destroy(Story $story)
     {
         abort_if($story->user_id !== auth()->id(), 403);
-        Storage::delete($story->image);
+        // base64 stored in DB, nothing to delete from disk
         $story->delete();
         return back();
     }

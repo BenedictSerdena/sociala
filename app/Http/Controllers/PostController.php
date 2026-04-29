@@ -24,7 +24,8 @@ class PostController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('posts', config('filesystems.default'));
+            $file = $request->file('image');
+            $imagePath = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         $post = auth()->user()->posts()->create([
@@ -72,7 +73,7 @@ class PostController extends Controller
         abort_if($post->user_id !== auth()->id(), 403);
 
         if ($post->image) {
-            Storage::delete($post->image);
+            // base64 stored in DB, nothing to delete from disk
         }
 
         $post->delete();

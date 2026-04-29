@@ -36,7 +36,7 @@ class Post extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? Storage::url($this->image) : null;
+        return $this->image ?? null;
     }
 
     public function getLikesCountAttribute(): int

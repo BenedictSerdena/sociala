@@ -108,7 +108,8 @@ class MessageController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('messages', config('filesystems.default'));
+            $file = $request->file('image');
+            $imagePath = 'data:' . $file->getMimeType() . ';base64,' . base64_encode(file_get_contents($file->getRealPath()));
         }
 
         $message = Message::create([
