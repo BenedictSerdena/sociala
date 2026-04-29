@@ -4,6 +4,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import GIcon from '@/Components/GIcon.vue';
 import CallModal from '@/Components/CallModal.vue';
+import IncomingCallModal from '@/Components/IncomingCallModal.vue';
 
 const props = defineProps({ chatUser: Object, messages: Array, pinnedMessages: Array });
 const page = usePage();
@@ -18,6 +19,7 @@ const sending        = ref(false);
 const callOpen        = ref(false);
 const callType        = ref('voice');
 const callChannelName = ref(null);
+const incomingCall    = ref(null); // { callType, channelName, caller }
 
 function makeChannelName() {
     const a = Math.min(authUser.id, props.chatUser.id);
@@ -36,6 +38,33 @@ async function startCall(type) {
         channel:   callChannelName.value,
     }).catch(() => {});
 }
+async function acceptCall() {
+    if (!incomingCall.value) return;
+    callType.value        = incomingCall.value.callType;
+    callChannelName.value = incomingCall.value.channelName;
+    incomingCall.value    = null;
+    callOpen.value        = true;
+    await axios.post(route('call.signal'), {
+        to:        props.chatUser.id,
+        type:      'accepted',
+        call_type: callType.value,
+        channel:   callChannelName.value,
+    }).catch(() => {});
+}
+
+async function declineCall() {
+    if (!incomingCall.value) return;
+    const ch   = incomingCall.value.channelName;
+    const ct   = incomingCall.value.callType;
+    incomingCall.value = null;
+    await axios.post(route('call.signal'), {
+        to:        props.chatUser.id,
+        type:      'declined',
+        call_type: ct,
+        channel:   ch,
+    }).catch(() => {});
+}
+
 const showPinned     = ref(false);
 const imageFile      = ref(null);
 const imagePreview   = ref(null);
@@ -90,10 +119,23 @@ onMounted(() => {
             });
         });
     channel.whisper('read', {});
+
+    window.Echo.private(`call.${authUser.id}`)
+        .listen('.CallSignal', (e) => {
+            if (e.type === 'incoming') {
+                incomingCall.value = { callType: e.callType, channelName: e.channelName, caller: e.caller };
+            } else if (e.type === 'ended' || e.type === 'declined') {
+                incomingCall.value = null;
+                if (callOpen.value) {
+                    callOpen.value = false;
+                }
+            }
+        });
 });
 
 onUnmounted(() => {
     if (channel) window.Echo.leave(`chat.${authUser.id}`);
+    window.Echo.leave(`call.${authUser.id}`);
     clearTimeout(typingTimeout);
 });
 
@@ -142,7 +184,9 @@ async function sendMessage() {
 
 function openContextMenu(e, msg) {
     e.preventDefault();
-    contextMenu.value = { x: e.clientX, y: e.clientY, message: msg };
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    contextMenu.value = { x: rect.right, y: rect.bottom, message: msg };
 }
 function closeContextMenu() { contextMenu.value = null; }
 
@@ -189,6 +233,7 @@ function handleKeydown(e) {
     <AppLayout>
         <CallModal :open="callOpen" :type="callType" :chat-user="chatUser" :current-user="authUser"
                    :channel-name="callChannelName" @close="callOpen = false" />
+        <IncomingCallModal :call="incomingCall" @accept="acceptCall" @decline="declineCall" />
 
         <!-- Context menu -->
         <Teleport to="body">
@@ -293,7 +338,7 @@ function handleKeydown(e) {
                     </div>
 
                     <div class="flex mb-1" :class="msg.sender_id === authUser.id ? 'justify-end' : 'justify-start'">
-                        <div class="flex items-end gap-2 max-w-[75%]" :class="msg.sender_id === authUser.id ? 'flex-row-reverse' : 'flex-row'">
+                        <div class="flex items-end gap-2 max-w-[75%] group" :class="msg.sender_id === authUser.id ? 'flex-row-reverse' : 'flex-row'">
                             <img v-if="msg.sender_id !== authUser.id"
                                  :src="chatUser.avatar_url" class="w-7 h-7 rounded-full object-cover flex-shrink-0 mb-1" />
                             <div>
@@ -313,8 +358,22 @@ function handleKeydown(e) {
 
                                 <!-- Normal message -->
                                 <div v-else
-                                     @contextmenu="openContextMenu($event, msg)"
-                                     class="cursor-pointer select-none relative">
+                                     class="relative flex items-center gap-1"
+                                     :class="msg.sender_id === authUser.id ? 'flex-row-reverse' : 'flex-row'">
+
+                                    <!-- 3-dot menu button (shows on group hover) -->
+                                    <div class="relative flex-shrink-0 self-center">
+                                        <button @click.stop="openContextMenu($event, msg)"
+                                                class="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300 transition-all"
+                                                title="More options">
+                                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- Bubble wrapper -->
+                                    <div class="relative">
                                     <!-- Pin badge on bubble -->
                                     <div v-if="msg.pinned_at"
                                          class="absolute -top-2 z-10 flex items-center gap-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full px-2 py-0.5 shadow-sm"
@@ -339,7 +398,8 @@ function handleKeydown(e) {
                                          ]">
                                         {{ msg.content }}
                                     </div>
-                                </div>
+                                    </div><!-- /bubble wrapper -->
+                                </div><!-- /normal message flex -->
 
                                 <p class="text-[10px] text-gray-400 mt-1 font-medium" :class="msg.sender_id === authUser.id ? 'text-right' : 'text-left'">
                                     {{ formatTime(msg.created_at) }}
