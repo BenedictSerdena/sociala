@@ -18,6 +18,7 @@ use App\Http\Controllers\PostController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\StoryLikeController;
+use App\Http\Controllers\StoryViewController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -87,6 +88,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/stories/{story}/archive', [StoryController::class, 'archive'])->name('stories.archive');
     Route::delete('/stories/{story}', [StoryController::class, 'destroy'])->name('stories.destroy');
     Route::post('/stories/{story}/like', [StoryLikeController::class, 'toggle'])->name('story-likes.toggle');
+    Route::post('/stories/{story}/view', [StoryViewController::class, 'store'])->name('story-views.store');
+    Route::get('/stories/{story}/views', [StoryViewController::class, 'index'])->name('story-views.index');
 
     Route::post('/posts/{post}/visibility', [PostController::class, 'setVisibility'])->name('posts.visibility');
 

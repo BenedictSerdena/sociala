@@ -35,6 +35,7 @@ class StoryPosted implements ShouldBroadcast
             'expires_at' => $story->expires_at,
             'likes_count' => 0,
             'is_liked' => false,
+            'views_count' => 0,
             'user' => array_merge($user->toArray(), ['avatar_url' => $user->avatar_url]),
         ];
     }

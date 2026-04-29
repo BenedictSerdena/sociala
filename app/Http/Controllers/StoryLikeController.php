@@ -10,6 +10,8 @@ class StoryLikeController extends Controller
 {
     public function toggle(Story $story)
     {
+        abort_if($story->user_id === auth()->id(), 403, 'Cannot like your own story.');
+
         $existing = $story->likes()->where('user_id', auth()->id())->first();
 
         if ($existing) {

@@ -38,7 +38,7 @@ class FeedController extends Controller
 
         $storyUserIds = $allIds;
         $stories = Story::active()
-            ->with(['user', 'likes'])
+            ->with(['user', 'likes', 'views'])
             ->whereIn('user_id', $storyUserIds)
             ->latest()
             ->get()
@@ -52,6 +52,7 @@ class FeedController extends Controller
                 'expires_at' => $s->expires_at,
                 'likes_count' => $s->likes->count(),
                 'is_liked' => $s->likes->contains('user_id', $authId),
+                'views_count' => $s->views->count(),
                 'user' => array_merge($s->user->toArray(), ['avatar_url' => $s->user->avatar_url]),
             ]);
 

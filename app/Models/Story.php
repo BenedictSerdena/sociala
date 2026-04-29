@@ -29,6 +29,11 @@ class Story extends Model
         return $this->hasMany(StoryLike::class);
     }
 
+    public function views()
+    {
+        return $this->hasMany(StoryView::class);
+    }
+
     public function getImageUrlAttribute(): string
     {
         return $this->image;
