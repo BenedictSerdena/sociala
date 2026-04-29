@@ -1,7 +1,6 @@
 <script setup>
 import { ref, watch, onUnmounted } from 'vue';
 import AgoraRTC from 'agora-rtc-sdk-ng';
-import { usePage } from '@inertiajs/vue3';
 
 const props = defineProps({
     open:        Boolean,
@@ -12,10 +11,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close']);
-
-const page     = usePage();
-const authUser = page.props.auth.user;
-let signalChannel = null;
 
 // ── State ──────────────────────────────────────────────
 const callState  = ref('calling'); // calling | connected | ended | declined
@@ -101,10 +96,6 @@ async function cleanupAgora() {
         await client.leave().catch(() => {});
         client = null;
     }
-    if (signalChannel) {
-        window.Echo.leave(`call.${authUser.id}`);
-        signalChannel = null;
-    }
 }
 
 function startTimer() {
@@ -119,18 +110,6 @@ watch(() => props.open, async (val) => {
         muted.value = false;
         cameraOff.value = false;
         duration.value = 0;
-
-        // Listen for declined/ended signals from the other side
-        signalChannel = window.Echo.private(`call.${authUser.id}`)
-            .listen('.CallSignal', (e) => {
-                if (e.type === 'declined') {
-                    callState.value  = 'declined';
-                    statusText.value = 'Call declined';
-                    cleanupAgora().then(() => setTimeout(() => emit('close'), 1500));
-                } else if (e.type === 'ended') {
-                    endCall(true);
-                }
-            });
 
         await startCall();
     } else {
