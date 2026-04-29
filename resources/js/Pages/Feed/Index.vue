@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PostCard from '@/Components/PostCard.vue';
 import PostForm from '@/Components/PostForm.vue';
@@ -45,11 +45,26 @@ async function loadMore() {
 }
 
 onMounted(() => {
-    if (!sentinel.value) return;
-    const observer = new IntersectionObserver(([entry]) => {
-        if (entry.isIntersecting) loadMore();
-    }, { rootMargin: '200px' });
-    observer.observe(sentinel.value);
+    if (sentinel.value) {
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) loadMore();
+        }, { rootMargin: '200px' });
+        observer.observe(sentinel.value);
+    }
+
+    window.Echo.private(`feed.${currentUser.id}`)
+        .listen('StoryPosted', (story) => {
+            const existingIdx = storiesList.value.findIndex(s => s.user.id === story.user.id);
+            if (existingIdx >= 0) {
+                storiesList.value[existingIdx] = story;
+            } else {
+                storiesList.value.unshift(story);
+            }
+        });
+});
+
+onUnmounted(() => {
+    window.Echo.leave(`feed.${currentUser.id}`);
 });
 
 function openStory(story) {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import GIcon from '@/Components/GIcon.vue';
 import { usePage } from '@inertiajs/vue3';
 
