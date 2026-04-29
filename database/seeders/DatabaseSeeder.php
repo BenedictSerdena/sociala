@@ -8,7 +8,6 @@ use App\Models\Like;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -18,7 +17,7 @@ class DatabaseSeeder extends Seeder
             'name'     => 'Admin',
             'username' => 'admin',
             'email'    => 'admin@admin.com',
-            'password' => Hash::make('adminpassword'),
+            'password' => 'adminpassword',
             'is_admin' => true,
         ]);
 
@@ -26,7 +25,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Alice Santos',
             'username' => 'alice',
             'email' => 'alice@example.com',
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'bio' => 'Photographer & traveler 📷',
         ]);
 
@@ -34,7 +33,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Bob Reyes',
             'username' => 'bob',
             'email' => 'bob@example.com',
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'bio' => 'Coffee lover ☕ | Developer',
         ]);
 
@@ -42,7 +41,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Carol Cruz',
             'username' => 'carol',
             'email' => 'carol@example.com',
-            'password' => Hash::make('password'),
+            'password' => 'password',
             'bio' => 'Designer 🎨 | Cat mom 🐱',
         ]);
 
