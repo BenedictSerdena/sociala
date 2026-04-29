@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Story extends Model
 {
@@ -30,7 +31,7 @@ class Story extends Model
 
     public function getImageUrlAttribute(): string
     {
-        return asset('storage/' . $this->image);
+        return Storage::url($this->image);
     }
 
     public function getLikesCountAttribute(): int

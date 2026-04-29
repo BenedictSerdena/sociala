@@ -15,7 +15,7 @@ class StoryController extends Controller
             'image' => 'required|image|max:10240',
         ]);
 
-        $path = $request->file('image')->store('stories', 'public');
+        $path = $request->file('image')->store('stories', config('filesystems.default'));
 
         $story = auth()->user()->stories()->create([
             'image' => $path,
@@ -42,7 +42,7 @@ class StoryController extends Controller
     public function destroy(Story $story)
     {
         abort_if($story->user_id !== auth()->id(), 403);
-        Storage::disk('public')->delete($story->image);
+        Storage::delete($story->image);
         $story->delete();
         return back();
     }

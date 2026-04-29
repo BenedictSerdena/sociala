@@ -24,7 +24,7 @@ class PostController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('posts', 'public');
+            $imagePath = $request->file('image')->store('posts', config('filesystems.default'));
         }
 
         $post = auth()->user()->posts()->create([
@@ -72,7 +72,7 @@ class PostController extends Controller
         abort_if($post->user_id !== auth()->id(), 403);
 
         if ($post->image) {
-            Storage::disk('public')->delete($post->image);
+            Storage::delete($post->image);
         }
 
         $post->delete();
