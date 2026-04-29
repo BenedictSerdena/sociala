@@ -92,7 +92,7 @@ function toggleFollow() {
                 <div class="h-52 relative">
                     <div v-if="!profileUser.cover_photo"
                          class="w-full h-full bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-400"></div>
-                    <img v-else :src="`/storage/${profileUser.cover_photo}`" class="w-full h-full object-cover" />
+                    <img v-else :src="profileUser.cover_photo" class="w-full h-full object-cover" />
                 </div>
 
                 <div class="px-4 pt-0 pb-4">
